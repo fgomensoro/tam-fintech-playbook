@@ -2,9 +2,11 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
+processed_event_ids = set()
+
 @app.post("/webhook")
 def webhook():
-    raw_body = request.get_data(cache=False, as_text=False)
+    raw_body = request.get_data(as_text=False)
 
     auth = request.headers.get("Authorization", "")
 
@@ -18,7 +20,19 @@ def webhook():
 
     if token != "token_admin":
         return jsonify({"ok": False, "error": "insufficient_scope"}), 403
+    
+    # Idempotency simulation (in-memory)
+    data = request.get_json(silent=True) or {}
+    event_id = data.get("event_id")
+    print(raw_body)
+    if not event_id:
+        return jsonify({"ok": False, "error": "missing_event_id"}), 422
 
+    if event_id in processed_event_ids:
+        return jsonify({"ok": False, "error": "duplicate_event"}), 409
+
+    processed_event_ids.add(event_id)
+    
     app.logger.info("Webhook received: content_length=%s content_type=%s",
                     request.content_length, request.content_type)
 
