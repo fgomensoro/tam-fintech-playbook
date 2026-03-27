@@ -15,6 +15,13 @@ def require_admin(f):
         return f(*args, **kwargs)
     return wrapper
 
+
+def log_request(event: str):
+    req_id = request.headers.get("X-Request-Id", "-")
+    app.logger.info("%s request_id=%s method=%s path=%s",
+                    event, req_id, request.method, request.path)
+
+
 processed_event_ids = set()
 items = {}
 next_id = 1
@@ -52,27 +59,36 @@ def webhook():
     app.logger.info("Webhook received: content_length=%s content_type=%s",
                     request.content_length, request.content_type)
 
+    log_request("webhook_processed")
+    
     return jsonify({"ok": True, "received_bytes": len(raw_body)}), 200
 
 
 @app.get("/items")
 @require_admin
 def list_items():
+    log_request("items_list")
+    
     return jsonify({"items": list(items.values())}), 200
 
 
 @app.get("/items/<int:item_id>")
 @require_admin
 def get_item(item_id: int):
+    log_request("items_get")
+    
     item = items.get(item_id)
     if not item:
         return jsonify({"ok": False, "error": "not_found"}), 404
+    
     return jsonify(item), 200
 
 
 @app.post("/items")
 @require_admin
 def create_item():
+    log_request("items_create")
+    
     global next_id
     data = request.get_json(silent=True)
     if data is None:
