@@ -366,6 +366,138 @@
           "response": []
         },
         {
+          "name": "Items - GET /items (page=1 limit=2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200 or 429\", () => {",
+                  "  pm.expect([200, 429]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test(\"Returns at most 2 items\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.items).to.be.an(\"array\");",
+                  "    pm.expect(json.items.length).to.be.at.most(2);",
+                  "    pm.expect(json.page).to.eql(1);",
+                  "    pm.expect(json.limit).to.eql(2);",
+                  "  });",
+                  "",
+                  "  pm.test(\"Stores page1 ids\", () => {",
+                  "    const json = pm.response.json();",
+                  "    const ids = json.items.map(i => i.id);",
+                  "    pm.environment.set(\"page1_ids\", JSON.stringify(ids));",
+                  "  });",
+                  "",
+                  "  pm.test(\"next_page is either 2 or null\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect([2, null]).to.include(json.next_page);",
+                  "  });",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/items?page=1&limit=2",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "2"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Items - GET /items (page=2 limit=2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200 or 429\", () => {",
+                  "  pm.expect([200, 429]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test(\"Returns at most 2 items\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.items).to.be.an(\"array\");",
+                  "    pm.expect(json.items.length).to.be.at.most(2);",
+                  "    pm.expect(json.page).to.eql(2);",
+                  "    pm.expect(json.limit).to.eql(2);",
+                  "  });",
+                  "",
+                  "  pm.test(\"No duplicate ids vs page1\", () => {",
+                  "    const json = pm.response.json();",
+                  "    const page2Ids = new Set(json.items.map(i => i.id));",
+                  "",
+                  "    const page1Raw = pm.environment.get(\"page1_ids\") || \"[]\";",
+                  "    const page1Ids = new Set(JSON.parse(page1Raw));",
+                  "",
+                  "    for (const id of page2Ids) {",
+                  "      pm.expect(page1Ids.has(id), `id ${id} duplicated across pages`).to.eql(false);",
+                  "    }",
+                  "  });",
+                  "",
+                  "  pm.test(\"next_page is either 3 or null\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect([3, null]).to.include(json.next_page);",
+                  "  });",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/items?page=2&limit=2",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "2"
+                },
+                {
+                  "key": "limit",
+                  "value": "2"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Items - GET /items/:id",
           "event": [
             {

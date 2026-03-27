@@ -23,6 +23,34 @@ def require_admin(f):
         return f(*args, **kwargs)
     return wrapper
 
+def check_rate_limit() -> tuple | None:
+    token = request.headers.get("Authorization", "")
+    key = token or "anonymous"
+
+    now = int(time.time())
+    window_start, count = rate_state.get(key, (now, 0))
+
+    if now - window_start >= rate_window_sec:
+        window_start, count = now, 0
+
+    count += 1
+    rate_state[key] = (window_start, count)
+
+    if count > rate_limit_max_requests:
+        retry_after = rate_window_sec - (now - window_start)
+        return jsonify({"ok": False, "error": "rate_limited"}), 429, {
+            "Retry-After": str(max(retry_after, 1))
+        }
+
+    return None
+
+
+def paginate(all_items: list, page: int, limit: int) -> tuple[list, int | None]:
+    start = (page - 1) * limit
+    end = start + limit
+    page_items = all_items[start:end]
+    next_page = page + 1 if end < len(all_items) else None
+    return page_items, next_page
 
 def log_request(event: str):
     req_id = request.headers.get("X-Request-Id", "-")
@@ -71,27 +99,26 @@ def webhook():
 @require_admin
 def list_items():
     log_request("items_list")
-    
-    # Simple rate limit (per token) for demo purposes
-    token = request.headers.get("Authorization", "")
-    key = token or "anonymous"
 
-    now = int(time.time())
-    window_start, count = rate_state.get(key, (now, 0))
+    rl = check_rate_limit()
+    if rl is not None:
+        return rl
 
-    if now - window_start >= rate_window_sec:
-        window_start, count = now, 0
+    page = request.args.get("page", default=1, type=int)
+    limit = request.args.get("limit", default=2, type=int)
 
-    count += 1
-    rate_state[key] = (window_start, count)
+    if page < 1 or limit < 1 or limit > 100:
+        return jsonify({"ok": False, "error": "invalid_pagination"}), 422
 
-    if count > rate_limit_max_requests:
-        retry_after = rate_window_sec - (now - window_start)
-        return jsonify({"ok": False, "error": "rate_limited"}), 429, {
-            "Retry-After": str(max(retry_after, 1))
-        }
-    
-    return jsonify({"items": list(items.values())}), 200
+    all_items = list(items.values())
+    page_items, next_page = paginate(all_items, page, limit)
+
+    return jsonify({
+        "items": page_items,
+        "page": page,
+        "limit": limit,
+        "next_page": next_page,
+    }), 200
 
 
 @app.get("/items/<int:item_id>")
