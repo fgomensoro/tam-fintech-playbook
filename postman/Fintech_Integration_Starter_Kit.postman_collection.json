@@ -40,7 +40,12 @@
               "listen": "prerequest",
               "script": {
                 "exec": [
-                  "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_admin\"));"
+                  "pm.sendRequest({",
+                  "    url: pm.environment.get(\"base_url\") + \"/reset\",",
+                  "    method: \"POST\"",
+                  "}, function (err, res) {",
+                  "    pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_admin\"));",
+                  "});"
                 ],
                 "type": "text/javascript",
                 "packages": {},
@@ -63,10 +68,10 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "hello",
+              "raw": "{\n    \"event_id\": \"evt_001\",\n    \"type\": \"payment.created\"\n}",
               "options": {
                 "raw": {
-                  "language": "text"
+                  "language": "json"
                 }
               }
             },
@@ -89,19 +94,10 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status is 200\", function () {",
-                  "  pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test(\"Response has ok=true\", function () {",
+                  "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Error is missing_bearer_token\", () => {",
                   "  const json = pm.response.json();",
-                  "  pm.expect(json.ok).to.eql(true);",
-                  "});",
-                  "",
-                  "pm.test(\"received_bytes is a number > 0\", function () {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.received_bytes).to.be.a(\"number\");",
-                  "  pm.expect(json.received_bytes).to.be.above(0);",
+                  "  pm.expect(json.error).to.eql(\"missing_bearer_token\");",
                   "});"
                 ],
                 "type": "text/javascript",
@@ -155,19 +151,10 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status is 200\", function () {",
-                  "  pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test(\"Response has ok=true\", function () {",
+                  "pm.test(\"Status is 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Error is insufficient_scope\", () => {",
                   "  const json = pm.response.json();",
-                  "  pm.expect(json.ok).to.eql(true);",
-                  "});",
-                  "",
-                  "pm.test(\"received_bytes is a number > 0\", function () {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.received_bytes).to.be.a(\"number\");",
-                  "  pm.expect(json.received_bytes).to.be.above(0);",
+                  "  pm.expect(json.error).to.eql(\"insufficient_scope\");",
                   "});"
                 ],
                 "type": "text/javascript",
@@ -269,7 +256,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"event_id\": \"evt_test_123\",\n  \"type\": \"payment.succeeded\"\n}",
+              "raw": "{\n    \"event_id\": \"evt_001\",\n    \"type\": \"payment.created\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -317,6 +304,59 @@
     {
       "name": "Items CRUD",
       "item": [
+        {
+          "name": "Items - POST /items",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Response has id and name\", () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.id).to.be.a(\"number\");",
+                  "  pm.expect(json.name).to.eql(\"alpha\");",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.environment.set(\"item_id\", json.id);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"alpha\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items"
+              ]
+            }
+          },
+          "response": []
+        },
         {
           "name": "Items - GET /items",
           "event": [
@@ -527,59 +567,6 @@
               "path": [
                 "items",
                 "{{item_id}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Items - POST /items",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
-                  "pm.test(\"Response has id and name\", () => {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.id).to.be.a(\"number\");",
-                  "  pm.expect(json.name).to.eql(\"alpha\");",
-                  "});",
-                  "",
-                  "const json = pm.response.json();",
-                  "pm.environment.set(\"item_id\", json.id);"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"name\": \"alpha\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}/items",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "items"
               ]
             }
           },

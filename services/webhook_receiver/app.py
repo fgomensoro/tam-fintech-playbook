@@ -95,6 +95,12 @@ def webhook():
     return jsonify({"ok": True, "received_bytes": len(raw_body)}), 200
 
 
+@app.route("/reset", methods=["POST"])
+def reset():
+    processed_event_ids.clear()
+    return jsonify({"ok": True, "reset": True}), 200
+
+
 @app.get("/items")
 @require_admin
 def list_items():
