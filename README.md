@@ -33,3 +33,17 @@ pip install --index-url https://pypi.org/simple -r services/webhook_receiver/req
 - Rate limits:
   - Playbook: `docs/foundations/rate_limit_playbook.md`
 ```
+
+
+## Running Tests via CLI
+
+Start the service (runs on `http://127.0.0.1:5001`):
+```bash
+python services/webhook_receiver/app.py
+```
+
+Run the collection:
+```bash
+postman collection run postman/Fintech_Integration_Starter_Kit.postman_collection.json \
+  --environment postman/local.postman_environment.json
+```

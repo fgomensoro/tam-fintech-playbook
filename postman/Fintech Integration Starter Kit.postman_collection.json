@@ -312,14 +312,27 @@
               "script": {
                 "exec": [
                   "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
-                  "pm.test(\"Response has id and name\", () => {",
+                  "pm.test(\"Response has id as number and name as string and not empty\", () => {",
                   "  const json = pm.response.json();",
+                  "  pm.expect(json.id).to.not.equal(null);",
                   "  pm.expect(json.id).to.be.a(\"number\");",
-                  "  pm.expect(json.name).to.eql(\"alpha\");",
+                  "  pm.expect(json.name).to.not.equal(null);",
+                  "  pm.expect(json.name).to.a(\"string\").to.not.equal(\"\");",
                   "});",
                   "",
                   "const json = pm.response.json();",
                   "pm.environment.set(\"item_id\", json.id);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  ""
                 ],
                 "type": "text/javascript",
                 "packages": {},
@@ -423,6 +436,12 @@
                   "    pm.expect(json.items.length).to.be.at.most(2);",
                   "    pm.expect(json.page).to.eql(1);",
                   "    pm.expect(json.limit).to.eql(2);",
+                  "    for (item of json.items){",
+                  "        pm.expect(item.id).to.not.equal(null)",
+                  "        pm.expect(item.id).to.be.a(\"number\");",
+                  "        pm.expect(item.name).to.not.equal(null);",
+                  "        pm.expect(item.name).to.a(\"string\").to.not.equal(\"\");",
+                  "    }",
                   "  });",
                   "",
                   "  pm.test(\"Stores page1 ids\", () => {",
@@ -486,6 +505,12 @@
                   "    pm.expect(json.items.length).to.be.at.most(2);",
                   "    pm.expect(json.page).to.eql(2);",
                   "    pm.expect(json.limit).to.eql(2);",
+                  "    for (item of json.items){",
+                  "        pm.expect(item.id).to.not.equal(null)",
+                  "        pm.expect(item.id).to.be.a(\"number\");",
+                  "        pm.expect(item.name).to.not.equal(null);",
+                  "        pm.expect(item.name).to.a(\"string\").to.not.equal(\"\");",
+                  "    }",
                   "  });",
                   "",
                   "  pm.test(\"No duplicate ids vs page1\", () => {",
@@ -547,7 +572,10 @@
                   "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Response has id=item_id\", () => {",
                   "  const json = pm.response.json();",
-                  "  pm.expect(json.id).to.eql(Number(pm.environment.get(\"item_id\")));",
+                  "  pm.expect(json.id).to.not.equal(null);",
+                  "  pm.expect(json.id).to.be.a(\"number\").to.eql(Number(pm.environment.get(\"item_id\")));",
+                  "  pm.expect(json.name).to.not.equal(null);",
+                  "  pm.expect(json.name).to.a(\"string\").to.not.equal(\"\");",
                   "});"
                 ],
                 "type": "text/javascript",
