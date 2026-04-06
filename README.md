@@ -1,5 +1,3 @@
-cat > README.md << 'EOF'
-
 # tam-fintech-playbook
 
 Hands-on portfolio to become a Technical Account Manager (fintech/accounting + integrations).
@@ -44,6 +42,12 @@ python services/webhook_receiver/app.py
 
 Run the collection:
 ```bash
-postman collection run postman/Fintech_Integration_Starter_Kit.postman_collection.json \
+postman collection run "postman/Fintech Integration Starter Kit.postman_collection.json" \
   --environment postman/local.postman_environment.json
 ```
+
+## CI — GitHub Actions
+
+Tests run automatically on every push to `main`.
+
+[![Postman Tests](https://github.com/fgomensoro/tam-fintech-playbook/actions/workflows/postman-tests.yml/badge.svg)](https://github.com/fgomensoro/tam-fintech-playbook/actions/workflows/postman-tests.yml)
