@@ -197,6 +197,9 @@ def oauth_token():
     client_secret = request.form.get("client_secret")
     scope = request.form.get("scope", "read:items")
 
+    if not grant_type:
+        return jsonify({"error": "missing_grant_type"}), 400
+
     if grant_type != "client_credentials":
         return jsonify({"error": "unsupported_grant_type"}), 400
 

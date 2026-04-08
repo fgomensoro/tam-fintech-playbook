@@ -930,6 +930,206 @@
       "name": "OAuth 2.0",
       "item": [
         {
+          "name": "Error Drills",
+          "item": [
+            {
+              "name": "Oauth Token (Invalid Client)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));",
+                      "pm.test(\"Error is invalid_client\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.error).to.eql(\"invalid_client\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "grant_type",
+                      "value": "client_credentials",
+                      "type": "text",
+                      "uuid": "6c46de27-fc28-47fd-b17e-4852f7557845"
+                    },
+                    {
+                      "key": "client_id",
+                      "value": "test-cli",
+                      "type": "text",
+                      "uuid": "f0e505d9-5f79-43bd-9c4e-252b4b6d44be"
+                    },
+                    {
+                      "key": "client_secret",
+                      "value": "test-secret",
+                      "type": "text",
+                      "uuid": "f3eff34a-600c-4155-9a14-8a22ed98dfd7"
+                    },
+                    {
+                      "key": "scope",
+                      "value": "read:items",
+                      "type": "text",
+                      "uuid": "eabc86f9-cae2-4537-8c51-ce8db20bc1b5"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/oauth/token",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "oauth",
+                    "token"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Oauth Token (unsupported_grant_type)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));",
+                      "pm.test(\"Error is unsupported_grant_type\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.error).to.eql(\"unsupported_grant_type\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "grant_type",
+                      "value": "client_cred",
+                      "type": "text",
+                      "uuid": "6c46de27-fc28-47fd-b17e-4852f7557845"
+                    },
+                    {
+                      "key": "client_id",
+                      "value": "test-client",
+                      "type": "text",
+                      "uuid": "f0e505d9-5f79-43bd-9c4e-252b4b6d44be"
+                    },
+                    {
+                      "key": "client_secret",
+                      "value": "test-secret",
+                      "type": "text",
+                      "uuid": "f3eff34a-600c-4155-9a14-8a22ed98dfd7"
+                    },
+                    {
+                      "key": "scope",
+                      "value": "read:items",
+                      "type": "text",
+                      "uuid": "eabc86f9-cae2-4537-8c51-ce8db20bc1b5"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/oauth/token",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "oauth",
+                    "token"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Oauth Token (missing_grant_type)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));",
+                      "pm.test(\"Error is missing_grant_type\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.error).to.eql(\"missing_grant_type\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "client_id",
+                      "value": "test-client",
+                      "type": "text",
+                      "uuid": "f0e505d9-5f79-43bd-9c4e-252b4b6d44be"
+                    },
+                    {
+                      "key": "client_secret",
+                      "value": "test-secret",
+                      "type": "text",
+                      "uuid": "f3eff34a-600c-4155-9a14-8a22ed98dfd7"
+                    },
+                    {
+                      "key": "scope",
+                      "value": "read:items",
+                      "type": "text",
+                      "uuid": "eabc86f9-cae2-4537-8c51-ce8db20bc1b5"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/oauth/token",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "oauth",
+                    "token"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
           "name": "Get Token - Client Credentials",
           "event": [
             {
