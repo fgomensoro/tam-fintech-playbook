@@ -925,6 +925,172 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "OAuth 2.0",
+      "item": [
+        {
+          "name": "Get Token - Client Credentials",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"access_token exists, is string and length of 32\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"access_token\")",
+                  "    pm.expect(json.access_token).to.not.equal(null)",
+                  "    pm.expect(json.access_token).to.be.a(\"string\").and.to.be.lengthOf(32);",
+                  "});",
+                  "",
+                  "pm.test(\"expires_in exists, is number and above 0\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"expires_in\")",
+                  "    pm.expect(json.expires_in).to.not.equal(null)",
+                  "    pm.expect(json.expires_in).to.be.a(\"number\").and.to.be.above(0);",
+                  "});",
+                  "",
+                  "pm.test(\"scope exists and is string\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"scope\")",
+                  "    pm.expect(json.scope).to.not.equal(null)",
+                  "    pm.expect(json.scope).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"token_type exists, is string and is 'Bearer'\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"token_type\")",
+                  "    pm.expect(json.token_type).to.not.equal(null)",
+                  "    pm.expect(json.token_type).to.be.a(\"string\").and.to.be.equal(\"Bearer\");",
+                  "});",
+                  "",
+                  "pm.test(\"oauth_token environment variable is set\", function () {",
+                  "    pm.expect(pm.environment.get(\"oauth_token\")).to.not.equal(null);",
+                  "    pm.expect(pm.environment.get(\"oauth_token\")).to.be.a(\"string\").and.to.have.lengthOf(32);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials",
+                  "type": "text",
+                  "uuid": "6c46de27-fc28-47fd-b17e-4852f7557845"
+                },
+                {
+                  "key": "client_id",
+                  "value": "test-client",
+                  "type": "text",
+                  "uuid": "f0e505d9-5f79-43bd-9c4e-252b4b6d44be"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "test-secret",
+                  "type": "text",
+                  "uuid": "f3eff34a-600c-4155-9a14-8a22ed98dfd7"
+                },
+                {
+                  "key": "scope",
+                  "value": "read:items",
+                  "type": "text",
+                  "uuid": "eabc86f9-cae2-4537-8c51-ce8db20bc1b5"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/oauth/token",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "oauth",
+                "token"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Items - OAuth Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{oauth_token}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "const response = await pm.sendRequest({",
+              "    url: \"http://127.0.0.1:5001/oauth/token\",",
+              "    method: \"POST\",",
+              "    header: { \"Content-Type\": \"application/x-www-form-urlencoded\" },",
+              "    body: {",
+              "        mode: \"urlencoded\",",
+              "        urlencoded: [",
+              "            { key: \"grant_type\", value: \"client_credentials\" },",
+              "            { key: \"client_id\", value: \"test-client\" },",
+              "            { key: \"client_secret\", value: \"test-secret\" },",
+              "            { key: \"scope\", value: \"read:items\" }",
+              "        ]",
+              "    }",
+              "});",
+              "",
+              "const json = response.json();",
+              "pm.environment.set(\"oauth_token\", json.access_token);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ]
     }
   ],
   "event": [
