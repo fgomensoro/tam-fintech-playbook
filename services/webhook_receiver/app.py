@@ -31,18 +31,23 @@ oauth_tokens = {}  # token -> scope
 # ---------------------------------------------------------------------------
 # Middleware / helpers
 # ---------------------------------------------------------------------------
-def require_admin(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        auth = request.headers.get("Authorization", "")
-        if not auth.startswith("Bearer "):
-            return jsonify({"ok": False, "error": "missing_bearer_token"}), 401
-        token = auth.removeprefix("Bearer ").strip()
-        if token != "token_admin" and token not in oauth_tokens:
-            return jsonify({"ok": False, "error": "insufficient_scope"}), 403
-        return f(*args, **kwargs)
-    return wrapper
-
+def require_scope(required_scope):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            auth = request.headers.get("Authorization", "")
+            if not auth.startswith("Bearer "):
+                return jsonify({"ok": False, "error": "missing_bearer_token"}), 401
+            token = auth.removeprefix("Bearer ").strip()
+            if token == "token_admin":
+                return f(*args, **kwargs)
+            if token not in oauth_tokens:
+                return jsonify({"ok": False, "error": "insufficient_scope"}), 403
+            if oauth_tokens[token] not in required_scope:
+                return jsonify({"ok": False, "error": "insufficient_scope"}), 403
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
 
 def rate_limit(f):
     @wraps(f)
@@ -132,7 +137,7 @@ def reset():
 # Routes — items (CRUD)
 # ---------------------------------------------------------------------------
 @app.get("/items")
-@require_admin
+@require_scope(["read:items"])
 @rate_limit
 def list_items():
     log_request("items_list")
@@ -155,7 +160,7 @@ def list_items():
 
 
 @app.get("/items/<int:item_id>")
-@require_admin
+@require_scope(["read:items"])
 def get_item(item_id: int):
     log_request("items_get")
 
@@ -167,7 +172,7 @@ def get_item(item_id: int):
 
 
 @app.post("/items")
-@require_admin
+@require_scope(["write:items"])
 def create_item():
     log_request("items_create")
 
