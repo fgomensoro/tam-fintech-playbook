@@ -1,6 +1,7 @@
 import os
 import secrets
 import time
+import jwt
 from functools import wraps
 
 from flask import Flask, request, jsonify
@@ -211,7 +212,15 @@ def oauth_token():
     if client_id != OAUTH_CLIENT_ID or client_secret != OAUTH_CLIENT_SECRET:
         return jsonify({"error": "invalid_client"}), 401
 
-    token = secrets.token_hex(16)
+    SECRET_KEY = os.environ.get("JWT_SECRET", "dev-secret-key")
+
+    payload = {
+        "sub": client_id,
+        "scope": scope,
+        "iat": int(time.time()),
+        "exp": int(time.time()) + 3600,
+    }
+    token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
     oauth_tokens[token] = scope
 
     return jsonify({
