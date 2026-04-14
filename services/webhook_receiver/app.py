@@ -17,6 +17,7 @@ app = Flask(__name__)
 rate_window_sec = 10
 rate_limit_max_requests = 3
 
+SECRET_KEY = os.environ.get("JWT_SECRET", "dev-secret-key")
 OAUTH_CLIENT_ID = os.environ.get("OAUTH_CLIENT_ID", "test-client")
 OAUTH_CLIENT_SECRET = os.environ.get("OAUTH_CLIENT_SECRET", "test-secret")
 
@@ -212,8 +213,6 @@ def oauth_token():
     if client_id != OAUTH_CLIENT_ID or client_secret != OAUTH_CLIENT_SECRET:
         return jsonify({"error": "invalid_client"}), 401
 
-    SECRET_KEY = os.environ.get("JWT_SECRET", "dev-secret-key")
-
     payload = {
         "sub": client_id,
         "scope": scope,
@@ -225,6 +224,54 @@ def oauth_token():
 
     return jsonify({
         "access_token": token,
+        "token_type": "Bearer",
+        "expires_in": 3600,
+        "scope": scope
+    }), 200
+    
+
+@app.post("/oauth/userinfo-token")
+def oauth_userinfo_token():
+    grant_type = request.form.get("grant_type")
+    client_id = request.form.get("client_id")
+    client_secret = request.form.get("client_secret")
+    scope = request.form.get("scope", "openid read:items")
+
+    if not grant_type:
+        return jsonify({"error": "missing_grant_type"}), 400
+
+    if grant_type != "client_credentials":
+        return jsonify({"error": "unsupported_grant_type"}), 400
+
+    if client_id != OAUTH_CLIENT_ID or client_secret != OAUTH_CLIENT_SECRET:
+        return jsonify({"error": "invalid_client"}), 401
+
+    now = int(time.time())
+
+    access_payload = {
+        "sub": client_id,
+        "scope": scope,
+        "iat": now,
+        "exp": now + 3600,
+    }
+
+    id_payload = {
+        "sub": client_id,
+        "email": "test@example.com",
+        "name": "Test User",
+        "auth_time": now,
+        "iat": now,
+        "exp": now + 3600,
+    }
+
+    access_token = jwt.encode(access_payload, SECRET_KEY, algorithm="HS256")
+    id_token = jwt.encode(id_payload, SECRET_KEY, algorithm="HS256")
+
+    oauth_tokens[access_token] = scope
+
+    return jsonify({
+        "access_token": access_token,
+        "id_token": id_token,
         "token_type": "Bearer",
         "expires_in": 3600,
         "scope": scope
