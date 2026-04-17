@@ -20,6 +20,7 @@ rate_limit_max_requests = 3
 SECRET_KEY = os.environ.get("JWT_SECRET", "dev-secret-key")
 OAUTH_CLIENT_ID = os.environ.get("OAUTH_CLIENT_ID", "test-client")
 OAUTH_CLIENT_SECRET = os.environ.get("OAUTH_CLIENT_SECRET", "test-secret")
+REGISTERED_REDIRECT_URI = "https://app.example.com/callback"
 
 # ---------------------------------------------------------------------------
 # State  (in-memory, resets on restart)
@@ -274,6 +275,35 @@ def oauth_userinfo_token():
         "id_token": id_token,
         "token_type": "Bearer",
         "expires_in": 3600,
+        "scope": scope
+    }), 200
+    
+
+@app.get("/oauth/authorize")
+def oauth_authorize():
+    client_id = request.args.get("client_id")
+    redirect_uri = request.args.get("redirect_uri")
+    response_type = request.args.get("response_type")
+    scope = request.args.get("scope", "openid read:items")
+
+    if not client_id or client_id != OAUTH_CLIENT_ID:
+        return jsonify({"error": "invalid_client"}), 401
+
+    if response_type != "code":
+        return jsonify({"error": "unsupported_response_type"}), 400
+
+    if not redirect_uri or redirect_uri != REGISTERED_REDIRECT_URI:
+        return jsonify({
+            "error": "redirect_uri_mismatch",
+            "registered": REGISTERED_REDIRECT_URI,
+            "received": redirect_uri
+        }), 400
+
+    # Simulate returning an authorization code
+    auth_code = secrets.token_hex(8)
+    return jsonify({
+        "code": auth_code,
+        "redirect_uri": redirect_uri,
         "scope": scope
     }), 200
 
