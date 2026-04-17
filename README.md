@@ -18,20 +18,20 @@ Create and activate a virtual environment:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --index-url https://pypi.org/simple -r services/webhook_receiver/requirements.txt
-
-## Common failures (Week 1)
-- Auth / permissions:
-  - `401 vs 403`: `docs/foundations/http_debugging_notes.md`
-  - Error drills: see Postman folder `Error Drills`
-- Payload / contract:
-  - `400 vs 422`: `docs/foundations/http_debugging_notes.md`
-  - Error patterns: `docs/foundations/api_error_patterns.md`
-- Missing records:
-  - Checklist: `docs/foundations/missing_records_checklist.md`
-- Rate limits:
-  - Playbook: `docs/foundations/rate_limit_playbook.md`
 ```
 
+## Common failures (Week 1)
+
+- **Auth / permissions:**
+  - `401 vs 403`: `docs/foundations/http_debugging_notes.md`
+  - Error drills: see Postman folder `Error Drills`
+- **Payload / contract:**
+  - `400 vs 422`: `docs/foundations/http_debugging_notes.md`
+  - Error patterns: `docs/foundations/api_error_patterns.md`
+- **Missing records:**
+  - Checklist: `docs/foundations/missing_records_checklist.md`
+- **Rate limits:**
+  - Playbook: `docs/foundations/rate_limit_playbook.md`
 
 ## Running Tests via CLI
 
@@ -52,7 +52,6 @@ Tests run automatically on every push to `main`.
 
 [![Postman Tests](https://github.com/fgomensoro/tam-fintech-playbook/actions/workflows/postman-tests.yml/badge.svg)](https://github.com/fgomensoro/tam-fintech-playbook/actions/workflows/postman-tests.yml)
 
-
 ## Week 1 — HTTP + Postman Foundations
 
 - `docs/foundations/` — HTTP debugging notes, error patterns, missing records checklist, rate limit playbook
@@ -71,3 +70,9 @@ Tests run automatically on every push to `main`.
 - `runbooks/auth_failing.md` — Auth incident runbook with diagnosis tree and customer messages
 - `docs/ai_playbooks/auth_triage_prompt.md` — AI prompt template for auth triage
 - Postman collection updated with OAuth 2.0 flows, error drills, and JWT assertions (53 assertions, 0 failures)
+
+## Week 4 — OIDC + PKCE + Edge Cases (in progress)
+
+- `/oauth/userinfo-token` endpoint — returns both `access_token` and `id_token`
+- `/oauth/authorize` endpoint — redirect URI validation with exact match
+- Postman collection updated with OIDC and redirect URI test cases
