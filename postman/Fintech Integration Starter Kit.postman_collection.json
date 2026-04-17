@@ -7,303 +7,604 @@
   },
   "item": [
     {
-      "name": "Debug Drills",
-      "item": [
-        {
-          "name": "Webhook (200 - valid token)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status is 200\", function () {",
-                  "  pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test(\"Response has ok=true\", function () {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.ok).to.eql(true);",
-                  "});",
-                  "",
-                  "pm.test(\"received_bytes is a number > 0\", function () {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.received_bytes).to.be.a(\"number\");",
-                  "  pm.expect(json.received_bytes).to.be.above(0);",
-                  "});"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "pm.sendRequest({",
-                  "    url: pm.environment.get(\"base_url\") + \"/reset\",",
-                  "    method: \"POST\"",
-                  "}, function (err, res) {",
-                  "    pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_admin\"));",
-                  "});"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearer_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"event_id\": \"evt_001\",\n    \"type\": \"payment.created\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}/webhook",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "webhook"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Webhook (401 - missing bearer)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));",
-                  "pm.test(\"Error is missing_bearer_token\", () => {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.error).to.eql(\"missing_bearer_token\");",
-                  "});"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  ""
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "hello",
-              "options": {
-                "raw": {
-                  "language": "text"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}/webhook",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "webhook"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Webhook (403 - insufficient scope)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status is 403\", () => pm.response.to.have.status(403));",
-                  "pm.test(\"Error is insufficient_scope\", () => {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.error).to.eql(\"insufficient_scope\");",
-                  "});"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_user\"));"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearer_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "hello",
-              "options": {
-                "raw": {
-                  "language": "text"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}/webhook",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "webhook"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Webhook (409 - duplicate event)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status is 409\", function () {",
-                  "  pm.response.to.have.status(409);",
-                  "});",
-                  "",
-                  "pm.test(\"Error is duplicate_event\", function () {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.error).to.eql(\"duplicate_event\");",
-                  "});"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_admin\"));"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearer_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"event_id\": \"evt_001\",\n    \"type\": \"payment.created\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}/webhook",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "webhook"
-              ]
-            }
-          },
-          "response": []
-        }
-      ],
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "packages": {},
-            "requests": {},
-            "exec": [
-              "pm.request.headers.upsert({ key: \"X-Request-Id\", value: pm.environment.get(\"request_id\") });"
-            ]
-          }
-        },
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "packages": {},
-            "requests": {},
-            "exec": [
-              ""
-            ]
-          }
-        }
-      ]
-    },
-    {
       "name": "Items CRUD",
       "item": [
+        {
+          "name": "Debug Drills",
+          "item": [
+            {
+              "name": "Webhook (200 - valid token)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has ok=true\", function () {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.ok).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"received_bytes is a number > 0\", function () {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.received_bytes).to.be.a(\"number\");",
+                      "  pm.expect(json.received_bytes).to.be.above(0);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_admin\"));"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"event_id\": \"evt_{{$timestamp}}\",\n    \"type\": \"payment.created\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/webhook",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "webhook"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Webhook (401 - missing bearer)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));",
+                      "pm.test(\"Error is missing_bearer_token\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.error).to.eql(\"missing_bearer_token\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "hello",
+                  "options": {
+                    "raw": {
+                      "language": "text"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/webhook",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "webhook"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Webhook (403 - insufficient scope)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 403\", () => pm.response.to.have.status(403));",
+                      "pm.test(\"Error is insufficient_scope\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.error).to.eql(\"insufficient_scope\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_user\"));"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "hello",
+                  "options": {
+                    "raw": {
+                      "language": "text"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/webhook",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "webhook"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Webhook (409 - duplicate event)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 409\", function () {",
+                      "  pm.response.to.have.status(409);",
+                      "});",
+                      "",
+                      "pm.test(\"Error is duplicate_event\", function () {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.error).to.eql(\"duplicate_event\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_admin\"));",
+                      "",
+                      "const eventId = \"evt_dup_\" + Date.now();",
+                      "pm.environment.set(\"dup_event_id\", eventId);",
+                      "",
+                      "pm.sendRequest({",
+                      "    url: pm.environment.get(\"base_url\") + \"/webhook\",",
+                      "    method: \"POST\",",
+                      "    header: {",
+                      "        \"Content-Type\": \"application/json\",",
+                      "        \"Authorization\": \"Bearer \" + pm.environment.get(\"bearer_token_admin\")",
+                      "    },",
+                      "    body: {",
+                      "        mode: \"raw\",",
+                      "        raw: JSON.stringify({ event_id: eventId, type: \"payment.created\" })",
+                      "    }",
+                      "}, function (err, res) {});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"event_id\": \"{{dup_event_id}}\",\n    \"type\": \"payment.created\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/webhook",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "webhook"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {},
+                "exec": [
+                  "pm.request.headers.upsert({ key: \"X-Request-Id\", value: pm.environment.get(\"request_id\") });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {},
+                "exec": [
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Error Drills",
+          "item": [
+            {
+              "name": "Webhook (422 - missing_event_id)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 422\", () => pm.response.to.have.status(422));",
+                      "",
+                      "pm.test(\"Error is missing_event_id\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.error).to.eql(\"missing_event_id\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_admin\"));"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \"type\": \"payment.succeeded\" }",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/webhook",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "webhook"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Items - POST /items (400 - invalid_json)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));",
+                      "pm.test(\"Error is invalid_json\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.error).to.eql(\"invalid_json\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "hello",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/items",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "items"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Items - GET /items (401 - missing_bearer)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));",
+                      "pm.test(\"Error is missing_bearer_token\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.error).to.eql(\"missing_bearer_token\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "pm.environment.unset(\"bearer_token\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/items",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "items"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Items - GET /items (403 - insufficient_scope)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 403\", () => pm.response.to.have.status(403));",
+                      "pm.test(\"Error is insufficient_scope\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.error).to.eql(\"insufficient_scope\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_user\"));"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/items",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "items"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Items - GET /items (429 - rate_limited)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 429\", () => pm.response.to.have.status(429));",
+                      "pm.test(\"Has Retry-After header\", () => {",
+                      "  pm.expect(pm.response.headers.has(\"Retry-After\")).to.eql(true);",
+                      "});",
+                      "pm.test(\"Error is rate_limited\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.error).to.eql(\"rate_limited\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_admin\"));"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/items",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "items"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
         {
           "name": "Items - POST /items",
           "event": [
@@ -633,296 +934,6 @@
               ""
             ]
           }
-        }
-      ]
-    },
-    {
-      "name": "Error Drills",
-      "item": [
-        {
-          "name": "Webhook (422 - missing_event_id)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status is 422\", () => pm.response.to.have.status(422));",
-                  "",
-                  "pm.test(\"Error is missing_event_id\", () => {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.error).to.eql(\"missing_event_id\");",
-                  "});"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_admin\"));"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearer_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{ \"type\": \"payment.succeeded\" }",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}/webhook",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "webhook"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Items - POST /items (400 - invalid_json)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));",
-                  "pm.test(\"Error is invalid_json\", () => {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.error).to.eql(\"invalid_json\");",
-                  "});"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearer_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "hello",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}/items",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "items"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Items - GET /items (401 - missing_bearer)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));",
-                  "pm.test(\"Error is missing_bearer_token\", () => {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.error).to.eql(\"missing_bearer_token\");",
-                  "});"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "pm.environment.unset(\"bearer_token\");"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/items",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "items"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Items - GET /items (403 - insufficient_scope)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status is 403\", () => pm.response.to.have.status(403));",
-                  "pm.test(\"Error is insufficient_scope\", () => {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.error).to.eql(\"insufficient_scope\");",
-                  "});"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_user\"));"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearer_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/items",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "items"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Items - GET /items (429 - rate_limited)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status is 429\", () => pm.response.to.have.status(429));",
-                  "pm.test(\"Has Retry-After header\", () => {",
-                  "  pm.expect(pm.response.headers.has(\"Retry-After\")).to.eql(true);",
-                  "});",
-                  "pm.test(\"Error is rate_limited\", () => {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.error).to.eql(\"rate_limited\");",
-                  "});"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_admin\"));"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearer_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/items",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "items"
-              ]
-            }
-          },
-          "response": []
         }
       ]
     },
