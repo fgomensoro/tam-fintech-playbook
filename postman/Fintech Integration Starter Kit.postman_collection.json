@@ -1613,6 +1613,13 @@
                 "packages": {},
                 "requests": {}
               }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "packages": {},
+                "type": "text/javascript"
+              }
             }
           ],
           "request": {
@@ -1648,13 +1655,13 @@
               ]
             },
             "url": {
-              "raw": "{{base_url}}/oauth/userinfo-token",
+              "raw": "{{base_url}}/oauth/token",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "oauth",
-                "userinfo-token"
+                "token"
               ]
             }
           },
