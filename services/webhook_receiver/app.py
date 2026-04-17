@@ -295,7 +295,6 @@ def oauth_authorize():
     if not redirect_uri or redirect_uri != REGISTERED_REDIRECT_URI:
         return jsonify({
             "error": "redirect_uri_mismatch",
-            "registered": REGISTERED_REDIRECT_URI,
             "received": redirect_uri
         }), 400
 

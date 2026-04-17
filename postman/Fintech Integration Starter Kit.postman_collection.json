@@ -1193,11 +1193,10 @@
                       "  pm.expect(json.error).to.eql(\"redirect_uri_mismatch\");",
                       "});",
                       "",
-                      "pm.test(\"Response includes registered and received URIs\", () => {",
+                      "pm.test(\"Response includes received URI but not registered\", () => {",
                       "  const json = pm.response.json();",
-                      "  pm.expect(json).to.have.property(\"registered\");",
                       "  pm.expect(json).to.have.property(\"received\");",
-                      "  pm.expect(json.registered).to.not.eql(json.received);",
+                      "  pm.expect(json).to.not.have.property(\"registered\");",
                       "});"
                     ],
                     "type": "text/javascript",
