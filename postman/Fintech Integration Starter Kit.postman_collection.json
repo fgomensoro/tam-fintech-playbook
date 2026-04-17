@@ -1176,8 +1176,135 @@
                 }
               },
               "response": []
+            },
+            {
+              "name": "GET /oauth/authorize (400 - redirect_uri_mismatch)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 400\", () => {",
+                      "  pm.expect(pm.response.code).to.eql(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Error is redirect_uri_mismatch\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.error).to.eql(\"redirect_uri_mismatch\");",
+                      "});",
+                      "",
+                      "pm.test(\"Response includes registered and received URIs\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json).to.have.property(\"registered\");",
+                      "  pm.expect(json).to.have.property(\"received\");",
+                      "  pm.expect(json.registered).to.not.eql(json.received);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/oauth/authorize?client_id=test-client&redirect_uri=https://app.example.com/callback/&response_type=code&scope=openid read:items",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "oauth",
+                    "authorize"
+                  ],
+                  "query": [
+                    {
+                      "key": "client_id",
+                      "value": "test-client"
+                    },
+                    {
+                      "key": "redirect_uri",
+                      "value": "https://app.example.com/callback/"
+                    },
+                    {
+                      "key": "response_type",
+                      "value": "code"
+                    },
+                    {
+                      "key": "scope",
+                      "value": "openid read:items"
+                    }
+                  ]
+                }
+              },
+              "response": []
             }
           ]
+        },
+        {
+          "name": "GET /oauth/authorize (200 - valid redirect)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has code as string\", () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property(\"code\");",
+                  "  pm.expect(json.code).to.not.be.null;",
+                  "  pm.expect(json.code).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response has redirect_uri matching registered\", () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property(\"redirect_uri\");",
+                  "  pm.expect(json.redirect_uri).to.eql(\"https://app.example.com/callback\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/oauth/authorize?client_id=test-client&redirect_uri=https://app.example.com/callback&response_type=code&scope=openid read:items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "oauth",
+                "authorize"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "test-client"
+                },
+                {
+                  "key": "redirect_uri",
+                  "value": "https://app.example.com/callback"
+                },
+                {
+                  "key": "response_type",
+                  "value": "code"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid read:items"
+                }
+              ]
+            }
+          },
+          "response": []
         },
         {
           "name": "Get Token - Client Credentials",
@@ -1307,6 +1434,33 @@
         },
         {
           "name": "Get Items - OAuth Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"oauth_token not null\", () => {",
+                  "  const oauth_token = pm.environment.get(\"oauth_token\")",
+                  "  pm.expect(oauth_token).to.not.be.null;",
+                  "});",
+                  "",
+                  "pm.test(\"Response status is 200\", () => {",
+                  "  pm.expect(pm.response.code).to.be.eql(200)",
+                  "});",
+                  "",
+                  "pm.test(\"If 200, response has items array\", () => {",
+                  "  if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.items).to.be.an(\"array\");",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -1516,7 +1670,7 @@
             "requests": {},
             "exec": [
               "const response = await pm.sendRequest({",
-              "    url: \"http://127.0.0.1:5001/oauth/token\",",
+              "    url: pm.environment.get(\"base_url\") + \"/oauth/token\",",
               "    method: \"POST\",",
               "    header: { \"Content-Type\": \"application/x-www-form-urlencoded\" },",
               "    body: {",
