@@ -570,7 +570,24 @@
                   "listen": "prerequest",
                   "script": {
                     "exec": [
-                      "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_admin\"));"
+                      "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_admin\"));",
+                      "",
+                      "const url = pm.environment.get(\"base_url\") + \"/items\";",
+                      "const auth = \"Bearer \" + pm.environment.get(\"bearer_token_admin\");",
+                      "",
+                      "const makeRequest = (callback) => {",
+                      "    pm.sendRequest({",
+                      "        url: url,",
+                      "        method: \"GET\",",
+                      "        header: { \"Authorization\": auth }",
+                      "    }, callback);",
+                      "};",
+                      "",
+                      "makeRequest(() => {",
+                      "    makeRequest(() => {",
+                      "        makeRequest(() => {});",
+                      "    });",
+                      "});"
                     ],
                     "type": "text/javascript",
                     "packages": {},
