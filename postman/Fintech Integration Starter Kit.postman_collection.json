@@ -1266,6 +1266,115 @@
                 }
               },
               "response": []
+            },
+            {
+              "name": "PKCE - Wrong code_verifier (invalid_grant)",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const codeVerifier = \"a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w\";",
+                      "",
+                      "const hash = CryptoJS.SHA256(codeVerifier);",
+                      "const codeChallenge = CryptoJS.enc.Base64.stringify(hash)",
+                      "    .replace(/\\+/g, \"-\")",
+                      "    .replace(/\\//g, \"_\")",
+                      "    .replace(/=+$/, \"\");",
+                      "",
+                      "// Get a valid code first",
+                      "pm.sendRequest({",
+                      "    url: pm.environment.get(\"base_url\") + \"/oauth/authorize?client_id=test-client&redirect_uri=https://app.example.com/callback&response_type=code&scope=openid%20read:items&code_challenge=\" + codeChallenge + \"&code_challenge_method=S256\",",
+                      "    method: \"GET\"",
+                      "}, function (err, res) {",
+                      "    pm.environment.set(\"pkce_stolen_code\", res.json().code);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 400\", () => {",
+                      "  pm.expect(pm.response.code).to.eql(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Error is invalid_grant\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.error).to.eql(\"invalid_grant\");",
+                      "});",
+                      "",
+                      "pm.test(\"Detail mentions code_verifier mismatch\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.detail).to.eql(\"code_verifier mismatch\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "grant_type",
+                      "value": "authorization_code",
+                      "type": "text",
+                      "uuid": "b6adb152-4094-4746-9068-b9ea802db8f1"
+                    },
+                    {
+                      "key": "client_id",
+                      "value": "test-client",
+                      "type": "text",
+                      "uuid": "8ed725d0-25c5-4776-9a4e-5511c3aaed22"
+                    },
+                    {
+                      "key": "client_secret",
+                      "value": "test-secret",
+                      "type": "text",
+                      "uuid": "404d136f-5a9d-4489-9de6-732a28bdbe75"
+                    },
+                    {
+                      "key": "code",
+                      "value": "{{pkce_stolen_code}}",
+                      "type": "text",
+                      "uuid": "9f526ccc-6fee-4d6e-b0e1-f117bc8dd65b"
+                    },
+                    {
+                      "key": "code_verifier",
+                      "value": "wrong-verifier-attacker-guessed-this",
+                      "type": "text",
+                      "uuid": "990c7351-a784-493b-a28b-54c2572043b2"
+                    },
+                    {
+                      "key": "redirect_uri",
+                      "value": "https://app.example.com/callback",
+                      "type": "text",
+                      "uuid": "67845dc8-4117-4375-b200-ad5d949b3a36"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/oauth/token",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "oauth",
+                    "token"
+                  ]
+                }
+              },
+              "response": []
             }
           ]
         },
@@ -1668,6 +1777,185 @@
                   "value": "openid read:items",
                   "type": "text",
                   "uuid": "ae5fbb02-4325-44d3-900b-dded105bdfd8"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/oauth/token",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "oauth",
+                "token"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PKCE - Authorization Code + S256 (happy path)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const codeVerifier = \"a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w\";",
+                  "",
+                  "const hash = CryptoJS.SHA256(codeVerifier);",
+                  "const codeChallenge = CryptoJS.enc.Base64.stringify(hash)",
+                  "    .replace(/\\+/g, \"-\")",
+                  "    .replace(/\\//g, \"_\")",
+                  "    .replace(/=+$/, \"\");",
+                  "",
+                  "pm.environment.set(\"pkce_code_verifier\", codeVerifier);",
+                  "pm.environment.set(\"pkce_code_challenge\", codeChallenge);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has code\", () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property(\"code\");",
+                  "  pm.expect(json.code).to.be.a(\"string\");",
+                  "  pm.environment.set(\"pkce_auth_code\", json.code);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/oauth/authorize?client_id=test-client&redirect_uri=https://app.example.com/callback&response_type=code&scope=openid read:items&code_challenge={{pkce_code_challenge}}&code_challenge_method=S256",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "oauth",
+                "authorize"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "test-client"
+                },
+                {
+                  "key": "redirect_uri",
+                  "value": "https://app.example.com/callback"
+                },
+                {
+                  "key": "response_type",
+                  "value": "code"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid read:items"
+                },
+                {
+                  "key": "code_challenge",
+                  "value": "{{pkce_code_challenge}}"
+                },
+                {
+                  "key": "code_challenge_method",
+                  "value": "S256"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PKCE - Token Exchange with code_verifier",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "});",
+                  "",
+                  "pm.test(\"access_token exists and is string\", () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property(\"access_token\");",
+                  "  pm.expect(json.access_token).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"id_token exists (openid scope)\", () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property(\"id_token\");",
+                  "  pm.expect(json.id_token).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"PKCE end-to-end: token is usable\", () => {",
+                  "  const json = pm.response.json();",
+                  "  const payload = JSON.parse(atob(json.access_token.split(\".\")[1]));",
+                  "  pm.expect(payload.sub).to.eql(\"test-client\");",
+                  "  pm.expect(payload.scope).to.include(\"read:items\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "authorization_code",
+                  "type": "text",
+                  "uuid": "d12b3ae3-001c-4cc4-8119-de5124486722"
+                },
+                {
+                  "key": "client_id",
+                  "value": "test-client",
+                  "type": "text",
+                  "uuid": "251575a5-f9f6-43c7-9933-7c4639be78b4"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "test-secret",
+                  "type": "text",
+                  "uuid": "c095ef03-4395-4995-9817-0ba704fee707"
+                },
+                {
+                  "key": "code",
+                  "value": "{{pkce_auth_code}}",
+                  "type": "text",
+                  "uuid": "073b944e-0eca-402f-8649-18e921043af6"
+                },
+                {
+                  "key": "code_verifier",
+                  "value": "{{pkce_code_verifier}}",
+                  "type": "text",
+                  "uuid": "a36013b4-4af4-466f-b04f-b06e40ae9011"
+                },
+                {
+                  "key": "redirect_uri",
+                  "value": "https://app.example.com/callback",
+                  "type": "text",
+                  "uuid": "523d5c02-1f2c-4d61-ba1a-ce91fba0c804"
                 }
               ]
             },

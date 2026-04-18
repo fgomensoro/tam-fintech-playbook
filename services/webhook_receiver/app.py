@@ -2,6 +2,7 @@ import os
 import secrets
 import time
 import jwt
+import hashlib, base64
 from functools import wraps
 
 from flask import Flask, request, jsonify
@@ -30,6 +31,7 @@ items = {}
 next_id = 1
 rate_state = {}    # key -> (window_start_ts, count)
 oauth_tokens = {}  # token -> scope
+auth_codes = {}    # code -> { scope, redirect_uri, code_challenge, code_challenge_method }
 
 # ---------------------------------------------------------------------------
 # Middleware / helpers
@@ -197,16 +199,50 @@ def oauth_token():
     grant_type = request.form.get("grant_type")
     client_id = request.form.get("client_id")
     client_secret = request.form.get("client_secret")
-    scope = request.form.get("scope", "read:items")
 
     if not grant_type:
         return jsonify({"error": "missing_grant_type"}), 400
 
-    if grant_type != "client_credentials":
+    if grant_type not in ("client_credentials", "authorization_code"):
         return jsonify({"error": "unsupported_grant_type"}), 400
 
     if client_id != OAUTH_CLIENT_ID or client_secret != OAUTH_CLIENT_SECRET:
         return jsonify({"error": "invalid_client"}), 401
+
+    # --- Authorization Code grant (with PKCE) ---
+    if grant_type == "authorization_code":
+        code = request.form.get("code")
+        code_verifier = request.form.get("code_verifier")
+        redirect_uri = request.form.get("redirect_uri")
+
+        if not code or code not in auth_codes:
+            return jsonify({"error": "invalid_grant", "detail": "invalid or expired code"}), 400
+
+        stored = auth_codes.pop(code)  # single-use
+
+        if redirect_uri != stored["redirect_uri"]:
+            return jsonify({"error": "invalid_grant", "detail": "redirect_uri mismatch"}), 400
+
+        # PKCE verification
+        if stored["code_challenge"]:
+            if not code_verifier:
+                return jsonify({"error": "invalid_grant", "detail": "code_verifier required"}), 400
+
+            if stored["code_challenge_method"] == "S256":
+                expected = base64.urlsafe_b64encode(
+                    hashlib.sha256(code_verifier.encode()).digest()
+                ).rstrip(b"=").decode()
+            else:  # plain
+                expected = code_verifier
+
+            if expected != stored["code_challenge"]:
+                return jsonify({"error": "invalid_grant", "detail": "code_verifier mismatch"}), 400
+
+        scope = stored["scope"]
+
+    # --- Client Credentials grant ---
+    else:
+        scope = request.form.get("scope", "read:items")
 
     now = int(time.time())
 
@@ -239,7 +275,7 @@ def oauth_token():
         response["id_token"] = jwt.encode(id_payload, SECRET_KEY, algorithm="HS256")
 
     return jsonify(response), 200
- 
+
  
 @app.get("/oauth/authorize")
 def oauth_authorize():
@@ -247,6 +283,8 @@ def oauth_authorize():
     redirect_uri = request.args.get("redirect_uri")
     response_type = request.args.get("response_type")
     scope = request.args.get("scope", "openid read:items")
+    code_challenge = request.args.get("code_challenge")
+    code_challenge_method = request.args.get("code_challenge_method", "S256")
 
     if not client_id or client_id != OAUTH_CLIENT_ID:
         return jsonify({"error": "invalid_client"}), 401
@@ -260,14 +298,24 @@ def oauth_authorize():
             "received": redirect_uri
         }), 400
 
-    # Simulate returning an authorization code
+    if code_challenge_method not in ("S256", "plain"):
+        return jsonify({"error": "invalid_request", "detail": "unsupported code_challenge_method"}), 400
+
     auth_code = secrets.token_hex(8)
+
+    auth_codes[auth_code] = {
+        "scope": scope,
+        "redirect_uri": redirect_uri,
+        "code_challenge": code_challenge,
+        "code_challenge_method": code_challenge_method,
+    }
+
     return jsonify({
         "code": auth_code,
         "redirect_uri": redirect_uri,
         "scope": scope
     }), 200
-
+    
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5001, debug=True)
