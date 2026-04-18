@@ -512,7 +512,22 @@
                   "listen": "prerequest",
                   "script": {
                     "exec": [
-                      "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_user\"));"
+                      "const response = pm.sendRequest({",
+                      "    url: pm.environment.get(\"base_url\") + \"/oauth/token\",",
+                      "    method: \"POST\",",
+                      "    header: { \"Content-Type\": \"application/x-www-form-urlencoded\" },",
+                      "    body: {",
+                      "        mode: \"urlencoded\",",
+                      "        urlencoded: [",
+                      "            { key: \"grant_type\", value: \"client_credentials\" },",
+                      "            { key: \"client_id\", value: \"test-client\" },",
+                      "            { key: \"client_secret\", value: \"test-secret\" },",
+                      "            { key: \"scope\", value: \"write:reports\" }",
+                      "        ]",
+                      "    }",
+                      "}, function (err, res) {",
+                      "    pm.environment.set(\"bearer_token\", res.json().access_token);",
+                      "});"
                     ],
                     "type": "text/javascript",
                     "packages": {},
@@ -1371,6 +1386,80 @@
                   "path": [
                     "oauth",
                     "token"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "GET /items (401 - token_expired)",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const header = btoa(JSON.stringify({ alg: \"HS256\", typ: \"JWT\" }))",
+                      "    .replace(/\\+/g, \"-\").replace(/\\//g, \"_\").replace(/=+$/, \"\");",
+                      "",
+                      "const payload = btoa(JSON.stringify({",
+                      "    sub: \"test-client\",",
+                      "    scope: \"read:items\",",
+                      "    iat: Math.floor(Date.now() / 1000) - 7200,",
+                      "    exp: Math.floor(Date.now() / 1000) - 3600",
+                      "})).replace(/\\+/g, \"-\").replace(/\\//g, \"_\").replace(/=+$/, \"\");",
+                      "",
+                      "// Sign with the same secret as Flask",
+                      "const signature = CryptoJS.HmacSHA256(header + \".\" + payload, \"dev-secret-key\");",
+                      "const sig = CryptoJS.enc.Base64.stringify(signature)",
+                      "    .replace(/\\+/g, \"-\").replace(/\\//g, \"_\").replace(/=+$/, \"\");",
+                      "",
+                      "const expiredToken = header + \".\" + payload + \".\" + sig;",
+                      "pm.environment.set(\"expired_token\", expiredToken);"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 401\", () => {",
+                      "    pm.expect(pm.response.code).to.eql(401);",
+                      "});",
+                      "",
+                      "pm.test(\"Error is token_expired\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.error).to.eql(\"token_expired\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{expired_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/items",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "items"
                   ]
                 }
               },

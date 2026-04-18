@@ -46,13 +46,24 @@ def require_scope(required_scope):
             token = auth.removeprefix("Bearer ").strip()
             if token == "token_admin":
                 return f(*args, **kwargs)
-            if token not in oauth_tokens:
+
+            # Validate JWT first (checks exp automatically)
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            except jwt.ExpiredSignatureError:
+                return jsonify({"ok": False, "error": "token_expired"}), 401
+            except jwt.InvalidTokenError:
+                return jsonify({"ok": False, "error": "invalid_token"}), 401
+
+            # Then check scope
+            token_scope = payload.get("scope", "")
+            if not any(s in token_scope.split() for s in required_scope):
                 return jsonify({"ok": False, "error": "insufficient_scope"}), 403
-            if oauth_tokens[token] not in required_scope:
-                return jsonify({"ok": False, "error": "insufficient_scope"}), 403
+
             return f(*args, **kwargs)
         return wrapper
     return decorator
+
 
 def rate_limit(f):
     @wraps(f)
