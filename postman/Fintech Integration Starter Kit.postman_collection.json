@@ -2112,6 +2112,301 @@
           }
         }
       ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Error Drills",
+          "item": [
+            {
+              "name": "Stripe Webhook (401 - missing signature)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 401\", () => {",
+                      "    pm.expect(pm.response.code).to.eql(401);",
+                      "});",
+                      "",
+                      "pm.test(\"Error is missing_signature\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.error).to.eql(\"missing_signature\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \"event_id\": \"evt_nosig\", \"type\": \"payment.created\" }",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/webhook/stripe",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "webhook",
+                    "stripe"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Stripe Webhook (401 - signature mismatch)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 401\", () => {",
+                      "    pm.expect(pm.response.code).to.eql(401);",
+                      "});",
+                      "",
+                      "pm.test(\"Error is missing_signature\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.error).to.eql(\"signature_mismatch\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const timestamp = Math.floor(Date.now() / 1000).toString();",
+                      "const body = JSON.stringify({ event_id: \"evt_badsig_\" + Date.now(), type: \"payment.created\" });",
+                      "",
+                      "pm.environment.set(\"stripe_sig\", \"t=\" + timestamp + \",v1=fakesignatureattackerguessed\");",
+                      "pm.environment.set(\"stripe_body\", body);"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Stripe-Signature",
+                    "value": "{{stripe_sig}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \"event_id\": \"evt_nosig\", \"type\": \"payment.created\" }",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/webhook/stripe",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "webhook",
+                    "stripe"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Stripe Webhook (401 - timestamp too old)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 401\", () => {",
+                      "    pm.expect(pm.response.code).to.eql(401);",
+                      "});",
+                      "",
+                      "pm.test(\"Error is timestamp_too_old\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.error).to.eql(\"timestamp_too_old\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const timestamp = (Math.floor(Date.now() / 1000) - 600).toString();",
+                      "const body = JSON.stringify({ event_id: \"evt_old_\" + Date.now(), type: \"payment.created\" });",
+                      "const secret = \"whsec_test_secret\";",
+                      "",
+                      "const signedPayload = timestamp + \".\" + body;",
+                      "const signature = CryptoJS.HmacSHA256(signedPayload, secret).toString(CryptoJS.enc.Hex);",
+                      "",
+                      "pm.environment.set(\"stripe_sig\", \"t=\" + timestamp + \",v1=\" + signature);",
+                      "pm.environment.set(\"stripe_body\", body);"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Stripe-Signature",
+                    "value": "{{stripe_sig}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{{stripe_body}}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/webhook/stripe",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "webhook",
+                    "stripe"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Stripe Webhook (200 - valid signature)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const timestamp = Math.floor(Date.now() / 1000).toString();",
+                  "const body = JSON.stringify({ event_id: \"evt_\" + Date.now(), type: \"payment.created\" });",
+                  "const secret = \"whsec_test_secret\";",
+                  "",
+                  "const signedPayload = timestamp + \".\" + body;",
+                  "const signature = CryptoJS.HmacSHA256(signedPayload, secret).toString(CryptoJS.enc.Hex);",
+                  "",
+                  "pm.environment.set(\"stripe_sig\", \"t=\" + timestamp + \",v1=\" + signature);",
+                  "pm.environment.set(\"stripe_body\", body);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Signature verified\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.verified).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test(\"ok is true\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.ok).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Stripe-Signature",
+                "value": "{{stripe_sig}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{stripe_body}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/webhook/stripe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "webhook",
+                "stripe"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "event": [

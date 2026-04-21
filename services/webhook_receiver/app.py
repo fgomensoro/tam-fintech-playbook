@@ -1,8 +1,4 @@
-import os
-import secrets
-import time
-import jwt
-import hashlib, base64
+import os, secrets, time, jwt, hashlib, base64, hmac
 from functools import wraps
 
 from flask import Flask, request, jsonify
@@ -22,6 +18,7 @@ SECRET_KEY = os.environ.get("JWT_SECRET", "dev-secret-key")
 OAUTH_CLIENT_ID = os.environ.get("OAUTH_CLIENT_ID", "test-client")
 OAUTH_CLIENT_SECRET = os.environ.get("OAUTH_CLIENT_SECRET", "test-secret")
 REGISTERED_REDIRECT_URI = "https://app.example.com/callback"
+WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "whsec_test_secret")
 
 # ---------------------------------------------------------------------------
 # State  (in-memory, resets on restart)
@@ -107,24 +104,50 @@ def log_request(event: str):
 # ---------------------------------------------------------------------------
 # Routes — webhook
 # ---------------------------------------------------------------------------
-@app.post("/webhook")
-def webhook():
-    auth = request.headers.get("Authorization", "")
-
-    # Simple auth simulation:
-    # - Missing/invalid token => 401
-    # - Valid token but insufficient scope => 403
-    if not auth.startswith("Bearer "):
-        return jsonify({"ok": False, "error": "missing_bearer_token"}), 401
-
-    token = auth.removeprefix("Bearer ").strip()
-
-    if token != "token_admin":
-        return jsonify({"ok": False, "error": "insufficient_scope"}), 403
-
+@app.post("/webhook/stripe")
+def webhook_stripe():
+    # 1. Read raw body BEFORE parsing (signature verification needs original bytes)
     raw_body = request.get_data(as_text=False)
+    
+    # 2. Get signature header
+    sig_header = request.headers.get("Stripe-Signature", "")
+    if not sig_header:
+        return jsonify({"ok": False, "error": "missing_signature"}), 401
 
-    # Idempotency simulation (in-memory)
+    # 3. Parse signature header: "t=timestamp,v1=signature"
+    sig_parts = {}
+    for part in sig_header.split(","):
+        key, _, value = part.partition("=")
+        sig_parts[key.strip()] = value.strip()
+
+    timestamp = sig_parts.get("t", "")
+    received_sig = sig_parts.get("v1", "")
+
+    if not timestamp or not received_sig:
+        return jsonify({"ok": False, "error": "invalid_signature_format"}), 401
+
+    # 4. Check timestamp tolerance (reject if older than 5 minutes)
+    try:
+        ts = int(timestamp)
+    except ValueError:
+        return jsonify({"ok": False, "error": "invalid_timestamp"}), 401
+
+    if abs(int(time.time()) - ts) > 300:
+        return jsonify({"ok": False, "error": "timestamp_too_old", "tolerance_seconds": 300}), 401
+
+    # 5. Compute expected signature: HMAC-SHA256(timestamp + "." + raw_body, secret)
+    signed_payload = f"{timestamp}.".encode() + raw_body
+    expected_sig = hmac.new(
+        WEBHOOK_SECRET.encode(),
+        signed_payload,
+        hashlib.sha256
+    ).hexdigest()
+
+    # 6. Compare signatures (timing-safe)
+    if not hmac.compare_digest(expected_sig, received_sig):
+        return jsonify({"ok": False, "error": "signature_mismatch"}), 401
+
+    # 7. Signature valid — now parse and process
     data = request.get_json(silent=True) or {}
     event_id = data.get("event_id")
     if not event_id:
@@ -135,12 +158,9 @@ def webhook():
 
     processed_event_ids.add(event_id)
 
-    app.logger.info("Webhook received: content_length=%s content_type=%s",
-                    request.content_length, request.content_type)
+    log_request("stripe_webhook_processed")
 
-    log_request("webhook_processed")
-
-    return jsonify({"ok": True, "received_bytes": len(raw_body)}), 200
+    return jsonify({"ok": True, "received_bytes": len(raw_body), "verified": True}), 200
 
 
 # ---------------------------------------------------------------------------
