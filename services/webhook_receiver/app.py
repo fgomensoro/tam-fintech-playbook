@@ -1,4 +1,4 @@
-import os, secrets, time, jwt, hashlib, base64, hmac
+import os, secrets, time, jwt, hashlib, base64, hmac, sqlite3
 from functools import wraps
 
 from flask import Flask, request, jsonify
@@ -19,6 +19,28 @@ OAUTH_CLIENT_ID = os.environ.get("OAUTH_CLIENT_ID", "test-client")
 OAUTH_CLIENT_SECRET = os.environ.get("OAUTH_CLIENT_SECRET", "test-secret")
 REGISTERED_REDIRECT_URI = "https://app.example.com/callback"
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "whsec_test_secret")
+
+
+# ---------------------------------------------------------------------------
+# Database — SQLite for webhook event deduplication
+# ---------------------------------------------------------------------------
+DB_PATH = os.environ.get("DB_PATH", "webhook_events.db")
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS processed_events (
+            event_id TEXT PRIMARY KEY,
+            event_type TEXT,
+            received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            processed BOOLEAN DEFAULT 1
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
 
 # ---------------------------------------------------------------------------
 # State  (in-memory, resets on restart)
@@ -106,15 +128,12 @@ def log_request(event: str):
 # ---------------------------------------------------------------------------
 @app.post("/webhook/stripe")
 def webhook_stripe():
-    # 1. Read raw body BEFORE parsing (signature verification needs original bytes)
     raw_body = request.get_data(as_text=False)
     
-    # 2. Get signature header
     sig_header = request.headers.get("Stripe-Signature", "")
     if not sig_header:
         return jsonify({"ok": False, "error": "missing_signature"}), 401
 
-    # 3. Parse signature header: "t=timestamp,v1=signature"
     sig_parts = {}
     for part in sig_header.split(","):
         key, _, value = part.partition("=")
@@ -126,7 +145,6 @@ def webhook_stripe():
     if not timestamp or not received_sig:
         return jsonify({"ok": False, "error": "invalid_signature_format"}), 401
 
-    # 4. Check timestamp tolerance (reject if older than 5 minutes)
     try:
         ts = int(timestamp)
     except ValueError:
@@ -135,7 +153,6 @@ def webhook_stripe():
     if abs(int(time.time()) - ts) > 300:
         return jsonify({"ok": False, "error": "timestamp_too_old", "tolerance_seconds": 300}), 401
 
-    # 5. Compute expected signature: HMAC-SHA256(timestamp + "." + raw_body, secret)
     signed_payload = f"{timestamp}.".encode() + raw_body
     expected_sig = hmac.new(
         WEBHOOK_SECRET.encode(),
@@ -143,26 +160,46 @@ def webhook_stripe():
         hashlib.sha256
     ).hexdigest()
 
-    # 6. Compare signatures (timing-safe)
     if not hmac.compare_digest(expected_sig, received_sig):
         return jsonify({"ok": False, "error": "signature_mismatch"}), 401
 
-    # 7. Signature valid — now parse and process
     data = request.get_json(silent=True) or {}
     event_id = data.get("event_id")
+    event_type = data.get("type", "unknown")
+    
     if not event_id:
         return jsonify({"ok": False, "error": "missing_event_id"}), 422
 
-    if event_id in processed_event_ids:
-        return jsonify({"ok": False, "error": "duplicate_event"}), 409
+    # Dedup using SQLite with INSERT OR IGNORE (race-safe)
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        cursor = conn.execute(
+            "INSERT OR IGNORE INTO processed_events (event_id, event_type) VALUES (?, ?)",
+            (event_id, event_type)
+        )
+        conn.commit()
+        is_duplicate = cursor.rowcount == 0
+    finally:
+        conn.close()
 
-    processed_event_ids.add(event_id)
+    if is_duplicate:
+        log_request("stripe_webhook_duplicate")
+        return jsonify({
+            "ok": True,
+            "duplicate": True,
+            "event_id": event_id,
+            "message": "already processed"
+        }), 200  # 200, NOT 409
 
     log_request("stripe_webhook_processed")
-
-    return jsonify({"ok": True, "received_bytes": len(raw_body), "verified": True}), 200
-
-
+    return jsonify({
+        "ok": True,
+        "received_bytes": len(raw_body),
+        "verified": True,
+        "event_id": event_id
+    }), 200
+    
+    
 # ---------------------------------------------------------------------------
 # Routes — items (CRUD)
 # ---------------------------------------------------------------------------

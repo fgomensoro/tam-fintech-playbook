@@ -2405,6 +2405,49 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Stripe Webhook (200 - duplicate event)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const timestamp = Math.floor(Date.now() / 1000).toString();",
+                  "const eventId = \"evt_dup_\" + Date.now();",
+                  "const body = JSON.stringify({ event_id: eventId, type: \"payment.succeeded\" });",
+                  "const secret = \"whsec_test_secret\";",
+                  "",
+                  "const signedPayload = timestamp + \".\" + body;",
+                  "const signature = CryptoJS.HmacSHA256(signedPayload, secret).toString(CryptoJS.enc.Hex);",
+                  "",
+                  "const sigHeader = \"t=\" + timestamp + \",v1=\" + signature;",
+                  "",
+                  "// First request — should process",
+                  "pm.sendRequest({",
+                  "    url: pm.environment.get(\"base_url\") + \"/webhook/stripe\",",
+                  "    method: \"POST\",",
+                  "    header: {",
+                  "        \"Content-Type\": \"application/json\",",
+                  "        \"Stripe-Signature\": sigHeader",
+                  "    },",
+                  "    body: { mode: \"raw\", raw: body }",
+                  "}, function (err, res) {});",
+                  "",
+                  "pm.environment.set(\"stripe_sig\", sigHeader);",
+                  "pm.environment.set(\"stripe_body\", body);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": []
+          },
+          "response": []
         }
       ]
     }
