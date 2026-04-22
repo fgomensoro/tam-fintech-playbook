@@ -10,379 +10,8 @@
       "name": "Items CRUD",
       "item": [
         {
-          "name": "Debug Drills",
-          "item": [
-            {
-              "name": "Webhook (200 - valid token)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status is 200\", function () {",
-                      "  pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test(\"Response has ok=true\", function () {",
-                      "  const json = pm.response.json();",
-                      "  pm.expect(json.ok).to.eql(true);",
-                      "});",
-                      "",
-                      "pm.test(\"received_bytes is a number > 0\", function () {",
-                      "  const json = pm.response.json();",
-                      "  pm.expect(json.received_bytes).to.be.a(\"number\");",
-                      "  pm.expect(json.received_bytes).to.be.above(0);",
-                      "});"
-                    ],
-                    "type": "text/javascript",
-                    "packages": {},
-                    "requests": {}
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "exec": [
-                      "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_admin\"));"
-                    ],
-                    "type": "text/javascript",
-                    "packages": {},
-                    "requests": {}
-                  }
-                }
-              ],
-              "request": {
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
-                  ]
-                },
-                "method": "POST",
-                "header": [],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"event_id\": \"evt_{{$timestamp}}\",\n    \"type\": \"payment.created\"\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "url": {
-                  "raw": "{{base_url}}/webhook",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "webhook"
-                  ]
-                }
-              },
-              "response": []
-            },
-            {
-              "name": "Webhook (401 - missing bearer)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));",
-                      "pm.test(\"Error is missing_bearer_token\", () => {",
-                      "  const json = pm.response.json();",
-                      "  pm.expect(json.error).to.eql(\"missing_bearer_token\");",
-                      "});"
-                    ],
-                    "type": "text/javascript",
-                    "packages": {},
-                    "requests": {}
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "exec": [
-                      ""
-                    ],
-                    "type": "text/javascript",
-                    "packages": {},
-                    "requests": {}
-                  }
-                }
-              ],
-              "request": {
-                "auth": {
-                  "type": "noauth"
-                },
-                "method": "POST",
-                "header": [],
-                "body": {
-                  "mode": "raw",
-                  "raw": "hello",
-                  "options": {
-                    "raw": {
-                      "language": "text"
-                    }
-                  }
-                },
-                "url": {
-                  "raw": "{{base_url}}/webhook",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "webhook"
-                  ]
-                }
-              },
-              "response": []
-            },
-            {
-              "name": "Webhook (403 - insufficient scope)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status is 403\", () => pm.response.to.have.status(403));",
-                      "pm.test(\"Error is insufficient_scope\", () => {",
-                      "  const json = pm.response.json();",
-                      "  pm.expect(json.error).to.eql(\"insufficient_scope\");",
-                      "});"
-                    ],
-                    "type": "text/javascript",
-                    "packages": {},
-                    "requests": {}
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "exec": [
-                      "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_user\"));"
-                    ],
-                    "type": "text/javascript",
-                    "packages": {},
-                    "requests": {}
-                  }
-                }
-              ],
-              "request": {
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
-                  ]
-                },
-                "method": "POST",
-                "header": [],
-                "body": {
-                  "mode": "raw",
-                  "raw": "hello",
-                  "options": {
-                    "raw": {
-                      "language": "text"
-                    }
-                  }
-                },
-                "url": {
-                  "raw": "{{base_url}}/webhook",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "webhook"
-                  ]
-                }
-              },
-              "response": []
-            },
-            {
-              "name": "Webhook (409 - duplicate event)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status is 409\", function () {",
-                      "  pm.response.to.have.status(409);",
-                      "});",
-                      "",
-                      "pm.test(\"Error is duplicate_event\", function () {",
-                      "  const json = pm.response.json();",
-                      "  pm.expect(json.error).to.eql(\"duplicate_event\");",
-                      "});"
-                    ],
-                    "type": "text/javascript",
-                    "packages": {},
-                    "requests": {}
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "exec": [
-                      "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_admin\"));",
-                      "",
-                      "const eventId = \"evt_dup_\" + Date.now();",
-                      "pm.environment.set(\"dup_event_id\", eventId);",
-                      "",
-                      "pm.sendRequest({",
-                      "    url: pm.environment.get(\"base_url\") + \"/webhook\",",
-                      "    method: \"POST\",",
-                      "    header: {",
-                      "        \"Content-Type\": \"application/json\",",
-                      "        \"Authorization\": \"Bearer \" + pm.environment.get(\"bearer_token_admin\")",
-                      "    },",
-                      "    body: {",
-                      "        mode: \"raw\",",
-                      "        raw: JSON.stringify({ event_id: eventId, type: \"payment.created\" })",
-                      "    }",
-                      "}, function (err, res) {});"
-                    ],
-                    "type": "text/javascript",
-                    "packages": {},
-                    "requests": {}
-                  }
-                }
-              ],
-              "request": {
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
-                  ]
-                },
-                "method": "POST",
-                "header": [],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"event_id\": \"{{dup_event_id}}\",\n    \"type\": \"payment.created\"\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "url": {
-                  "raw": "{{base_url}}/webhook",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "webhook"
-                  ]
-                }
-              },
-              "response": []
-            }
-          ],
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {},
-                "exec": [
-                  "pm.request.headers.upsert({ key: \"X-Request-Id\", value: pm.environment.get(\"request_id\") });"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {},
-                "exec": [
-                  ""
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "Error Drills",
           "item": [
-            {
-              "name": "Webhook (422 - missing_event_id)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status is 422\", () => pm.response.to.have.status(422));",
-                      "",
-                      "pm.test(\"Error is missing_event_id\", () => {",
-                      "  const json = pm.response.json();",
-                      "  pm.expect(json.error).to.eql(\"missing_event_id\");",
-                      "});"
-                    ],
-                    "type": "text/javascript",
-                    "packages": {},
-                    "requests": {}
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "exec": [
-                      "pm.environment.set(\"bearer_token\", pm.environment.get(\"bearer_token_admin\"));"
-                    ],
-                    "type": "text/javascript",
-                    "packages": {},
-                    "requests": {}
-                  }
-                }
-              ],
-              "request": {
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
-                  ]
-                },
-                "method": "POST",
-                "header": [],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{ \"type\": \"payment.succeeded\" }",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "url": {
-                  "raw": "{{base_url}}/webhook",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "webhook"
-                  ]
-                }
-              },
-              "response": []
-            },
             {
               "name": "Items - POST /items (400 - invalid_json)",
               "event": [
@@ -395,6 +24,31 @@
                       "  const json = pm.response.json();",
                       "  pm.expect(json.error).to.eql(\"invalid_json\");",
                       "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const response = await pm.sendRequest({",
+                      "    url: pm.environment.get(\"base_url\") + \"/oauth/token\",",
+                      "    method: \"POST\",",
+                      "    header: { \"Content-Type\": \"application/x-www-form-urlencoded\" },",
+                      "    body: {",
+                      "        mode: \"urlencoded\",",
+                      "        urlencoded: [",
+                      "            { key: \"grant_type\", value: \"client_credentials\" },",
+                      "            { key: \"client_id\", value: \"test-client\" },",
+                      "            { key: \"client_secret\", value: \"test-secret\" },",
+                      "            { key: \"scope\", value: \"write:items\" }",
+                      "        ]",
+                      "    }",
+                      "});",
+                      "pm.environment.set(\"bearer_token\", response.json().access_token);"
                     ],
                     "type": "text/javascript",
                     "packages": {},
@@ -2441,11 +2095,64 @@
                 "packages": {},
                 "requests": {}
               }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200 (not 409)\", () => {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Duplicate flag is true\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.duplicate).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test(\"ok is true for duplicate\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.ok).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
             }
           ],
           "request": {
             "method": "POST",
-            "header": []
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Stripe-Signature",
+                "value": "{{stripe_sig}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{stripe_body}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/webhook/stripe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "webhook",
+                "stripe"
+              ]
+            }
           },
           "response": []
         }
