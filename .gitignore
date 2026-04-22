@@ -84,3 +84,13 @@ logs/
 # Keep exports unless you decide otherwise:
 # postman/*.postman_environment.json
 # postman/*.postman_collection.json
+
+# -----------------------
+# Claude / Local tooling
+# -----------------------
+.claude/
+
+# -----------------------
+# Databases
+# -----------------------
+*.db
