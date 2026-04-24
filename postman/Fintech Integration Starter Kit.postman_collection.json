@@ -1979,6 +1979,185 @@
           ]
         },
         {
+          "name": "Failure Simulations",
+          "item": [
+            {
+              "name": "Simulate 500 error",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 500\", () => {",
+                      "    pm.expect(pm.response.code).to.eql(500);",
+                      "});",
+                      "",
+                      "pm.test(\"Simulates server error\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.error).to.eql(\"simulated_server_error\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"event_id\": \"evt_test\",\n    \"type\": \"payment.created\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/webhook/stripe/simulate-500",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "webhook",
+                    "stripe",
+                    "simulate-500"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Simulate slow endpoint (timeout)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response time exceeds Stripe's 10s timeout\", () => {",
+                      "    pm.expect(pm.response.responseTime).to.be.above(10000);",
+                      "});",
+                      "",
+                      "pm.test(\"This would trigger a retry in Stripe\", () => {",
+                      "    pm.expect(pm.response.responseTime).to.be.above(10000);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"event_id\": \"evt_slow\",\n    \"type\": \"payment.created\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/webhook/stripe/simulate-slow",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "webhook",
+                    "stripe",
+                    "simulate-slow"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Simulate wrong signing secret",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const timestamp = Math.floor(Date.now() / 1000).toString();",
+                      "const body = JSON.stringify({ event_id: \"evt_wrongsec_\" + Date.now(), type: \"payment.created\" });",
+                      "const secret = \"whsec_test_secret\";",
+                      "",
+                      "const signedPayload = timestamp + \".\" + body;",
+                      "const signature = CryptoJS.HmacSHA256(signedPayload, secret).toString(CryptoJS.enc.Hex);",
+                      "",
+                      "pm.environment.set(\"sim_sig\", \"t=\" + timestamp + \",v1=\" + signature);",
+                      "pm.environment.set(\"sim_body\", body);"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status is 401\", () => {",
+                      "    pm.expect(pm.response.code).to.eql(401);",
+                      "});",
+                      "",
+                      "pm.test(\"Signature mismatch (wrong secret simulation)\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.error).to.eql(\"signature_mismatch\");",
+                      "    pm.expect(json.hint).to.include(\"wrong secret\");",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Stripe-Signature",
+                    "value": "{{sim_sig}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{{sim_body}}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/webhook/stripe/simulate-wrong-secret",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "webhook",
+                    "stripe",
+                    "simulate-wrong-secret"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
           "name": "Stripe Webhook (200 - valid signature)",
           "event": [
             {

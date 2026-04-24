@@ -385,5 +385,61 @@ def oauth_authorize():
     }), 200
     
 
+# ---------------------------------------------------------------------------
+# Debug endpoints — simulate failure modes for testing
+# ---------------------------------------------------------------------------
+
+@app.post("/webhook/stripe/simulate-500")
+def webhook_simulate_500():
+    """Simulates endpoint crash — returns 500 every time."""
+    return jsonify({"ok": False, "error": "simulated_server_error"}), 500
+
+
+@app.post("/webhook/stripe/simulate-slow")
+def webhook_simulate_slow():
+    """Simulates slow endpoint — sleeps 12 seconds before responding.
+    Stripe timeout is ~10s, so this triggers a timeout retry."""
+    time.sleep(12)
+    return jsonify({"ok": True, "slow": True}), 200
+
+
+@app.post("/webhook/stripe/simulate-wrong-secret")
+def webhook_simulate_wrong_secret():
+    """Simulates wrong signing secret — verifies with a different secret,
+    so all real Stripe-signed requests fail."""
+    raw_body = request.get_data(as_text=False)
+    sig_header = request.headers.get("Stripe-Signature", "")
+    
+    if not sig_header:
+        return jsonify({"ok": False, "error": "missing_signature"}), 401
+
+    sig_parts = {}
+    for part in sig_header.split(","):
+        key, _, value = part.partition("=")
+        sig_parts[key.strip()] = value.strip()
+
+    timestamp = sig_parts.get("t", "")
+    received_sig = sig_parts.get("v1", "")
+
+    # Use WRONG secret on purpose
+    wrong_secret = "whsec_WRONG_SECRET_FOR_SIMULATION"
+    
+    signed_payload = f"{timestamp}.".encode() + raw_body
+    expected_sig = hmac.new(
+        wrong_secret.encode(),
+        signed_payload,
+        hashlib.sha256
+    ).hexdigest()
+
+    if not hmac.compare_digest(expected_sig, received_sig):
+        return jsonify({
+            "ok": False,
+            "error": "signature_mismatch",
+            "hint": "endpoint is verifying with wrong secret"
+        }), 401
+
+    return jsonify({"ok": True}), 200
+
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5001, debug=True)
