@@ -32,8 +32,13 @@ def init_db():
         CREATE TABLE IF NOT EXISTS processed_events (
             event_id TEXT PRIMARY KEY,
             event_type TEXT,
+            raw_body TEXT,
             received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            processed BOOLEAN DEFAULT 1
+            status TEXT DEFAULT 'pending',
+            claimed_at TIMESTAMP,
+            processed_at TIMESTAMP,
+            attempts INTEGER DEFAULT 0,
+            last_error TEXT
         )
     """)
     conn.commit()
@@ -126,14 +131,29 @@ def log_request(event: str):
 # ---------------------------------------------------------------------------
 # Routes — webhook
 # ---------------------------------------------------------------------------
+
 @app.post("/webhook/stripe")
 def webhook_stripe():
+    # ============================================================
+    # PASO 1: Read raw body BEFORE anything else
+    # ============================================================
+    # Lo guardamos en bytes (as_text=False) porque la firma HMAC
+    # se calcula sobre los bytes exactos. Si Flask parsea el JSON
+    # primero, los bytes cambian (whitespace, orden de keys) y la
+    # firma nunca matchea.
     raw_body = request.get_data(as_text=False)
     
+    # ============================================================
+    # PASO 2: Verify signature exists and is well-formed
+    # ============================================================
+    # Rechazos baratos primero — si no hay header, no hay nada
+    # que verificar. 401 porque es un problema de autenticación.
     sig_header = request.headers.get("Stripe-Signature", "")
     if not sig_header:
         return jsonify({"ok": False, "error": "missing_signature"}), 401
 
+    # Stripe-Signature: t=1234567890,v1=abc123...
+    # Parseamos los pares key=value separados por coma.
     sig_parts = {}
     for part in sig_header.split(","):
         key, _, value = part.partition("=")
@@ -145,6 +165,12 @@ def webhook_stripe():
     if not timestamp or not received_sig:
         return jsonify({"ok": False, "error": "invalid_signature_format"}), 401
 
+    # ============================================================
+    # PASO 3: Timestamp tolerance check (anti-replay)
+    # ============================================================
+    # Aunque la firma sea válida, si el timestamp es viejo es un
+    # replay attack. 5 minutos (300 seg) es el estándar de Stripe.
+    # Lo hacemos ANTES de calcular HMAC porque es más barato.
     try:
         ts = int(timestamp)
     except ValueError:
@@ -153,6 +179,11 @@ def webhook_stripe():
     if abs(int(time.time()) - ts) > 300:
         return jsonify({"ok": False, "error": "timestamp_too_old", "tolerance_seconds": 300}), 401
 
+    # ============================================================
+    # PASO 4: Verify HMAC signature
+    # ============================================================
+    # Recalculamos la firma con nuestro secret y la comparamos.
+    # signed_payload = "timestamp.body" — el "." es literal.
     signed_payload = f"{timestamp}.".encode() + raw_body
     expected_sig = hmac.new(
         WEBHOOK_SECRET.encode(),
@@ -160,9 +191,17 @@ def webhook_stripe():
         hashlib.sha256
     ).hexdigest()
 
+    # compare_digest evita timing attacks: tarda lo mismo aunque
+    # los strings difieran en el primer caracter o en el último.
     if not hmac.compare_digest(expected_sig, received_sig):
         return jsonify({"ok": False, "error": "signature_mismatch"}), 401
 
+    # ============================================================
+    # PASO 5: Parse JSON only AFTER signature verified
+    # ============================================================
+    # Ahora que confirmamos que el body es legítimo, podemos
+    # parsearlo sin riesgo. Antes de este punto, los bytes
+    # podrían venir de un atacante.
     data = request.get_json(silent=True) or {}
     event_id = data.get("event_id")
     event_type = data.get("type", "unknown")
@@ -170,34 +209,48 @@ def webhook_stripe():
     if not event_id:
         return jsonify({"ok": False, "error": "missing_event_id"}), 422
 
-    # Dedup using SQLite with INSERT OR IGNORE (race-safe)
+    # ============================================================
+    # PASO 6: Persist to queue (status='pending')
+    # ============================================================
+    # GOLDEN ARCHITECTURE: el receiver NO procesa. Solo guarda.
+    # INSERT OR IGNORE = si event_id ya existe, no hace nada
+    # (race-safe deduplication a nivel DB).
+    # status='pending' = el worker lo va a tomar después.
     conn = sqlite3.connect(DB_PATH)
     try:
         cursor = conn.execute(
-            "INSERT OR IGNORE INTO processed_events (event_id, event_type) VALUES (?, ?)",
-            (event_id, event_type)
+            """INSERT OR IGNORE INTO processed_events 
+               (event_id, event_type, raw_body, status) 
+               VALUES (?, ?, ?, 'pending')""",
+            (event_id, event_type, raw_body.decode('utf-8'))
         )
         conn.commit()
+        # rowcount=0 significa que el INSERT fue ignorado
+        # → ya existía → es un duplicado
         is_duplicate = cursor.rowcount == 0
     finally:
         conn.close()
 
+    # ============================================================
+    # PASO 7: Return 200 IMMEDIATELY (always 2xx)
+    # ============================================================
+    # Stripe ya cumplió su trabajo. Si es duplicado, también 200
+    # (NO 409 — eso dispararía retries). El procesamiento real
+    # pasa después en el worker, en otro proceso.
     if is_duplicate:
-        log_request("stripe_webhook_duplicate")
         return jsonify({
             "ok": True,
             "duplicate": True,
             "event_id": event_id,
-            "message": "already processed"
-        }), 200  # 200, NOT 409
+            "message": "already in queue or processed"
+        }), 200
 
-    log_request("stripe_webhook_processed")
     return jsonify({
         "ok": True,
-        "received_bytes": len(raw_body),
-        "verified": True,
-        "event_id": event_id
-    }), 200
+        "event_id": event_id,
+        "queued": True,
+        "message": "event queued for async processing"
+    }), 200  
     
     
 # ---------------------------------------------------------------------------
