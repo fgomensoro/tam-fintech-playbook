@@ -1,78 +1,68 @@
 # tam-fintech-playbook
 
-Hands-on portfolio to become a Technical Account Manager (fintech/accounting + integrations).
-
-## Repo structure
-
-- `postman/`: Postman collections and environments
-- `services/`: demo services (webhook receiver, trace, etc.)
-- `sql/`: reconciliation datasets + queries
-- `runbooks/`: incident playbooks
-- `docs/`: templates (RCA, QBR, success plans) + notes
-
-## Quickstart: webhook receiver (Python)
-
-Create and activate a virtual environment:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install --index-url https://pypi.org/simple -r services/webhook_receiver/requirements.txt
-```
-
-## Common failures (Week 1)
-
-- **Auth / permissions:**
-  - `401 vs 403`: `docs/foundations/http_debugging_notes.md`
-  - Error drills: see Postman folder `Error Drills`
-- **Payload / contract:**
-  - `400 vs 422`: `docs/foundations/http_debugging_notes.md`
-  - Error patterns: `docs/foundations/api_error_patterns.md`
-- **Missing records:**
-  - Checklist: `docs/foundations/missing_records_checklist.md`
-- **Rate limits:**
-  - Playbook: `docs/foundations/rate_limit_playbook.md`
-
-## Running Tests via CLI
-
-Start the service (runs on `http://127.0.0.1:5001`):
-```bash
-python services/webhook_receiver/app.py
-```
-
-Run the collection:
-```bash
-postman collection run "postman/Fintech Integration Starter Kit.postman_collection.json" \
-  --environment postman/local.postman_environment.json
-```
-
-## CI — GitHub Actions
-
-Tests run automatically on every push to `main`.
+Hands-on portfolio building toward a Technical Account Manager role in fintech and accounting integrations. Each week ships a new capability: working code, runbooks, troubleshooting guides, and customer-facing documentation.
 
 [![Postman Tests](https://github.com/fgomensoro/tam-fintech-playbook/actions/workflows/postman-tests.yml/badge.svg)](https://github.com/fgomensoro/tam-fintech-playbook/actions/workflows/postman-tests.yml)
 
-## Week 1 — HTTP + Postman Foundations
+## Services
 
-- `docs/foundations/` — HTTP debugging notes, error patterns, missing records checklist, rate limit playbook
-- `docs/http_postman_interview_pack.md` — 10 interview Q&A pairs
-- Postman collection: Fintech Integration Starter Kit with error drills
+| Service | What it is | Docs |
+|---|---|---|
+| `services/webhook_receiver` | Stripe-style webhook ingestion + async worker | [README](services/webhook_receiver/README.md) |
 
-## Week 2 — Postman Pro + CLI + CI
+## Quickstart
 
-- GitHub Actions pipeline running collection on every push
-- CLI command documented in README
-- 35 assertions, 0 failures
+```bash
+# Install dependencies
+pip install -r services/webhook_receiver/requirements.txt
+brew install just  # task runner
 
-## Week 3 — OAuth 2.0 Troubleshooting
+# Run everything (receiver + worker)
+just dev
 
-- `docs/oauth_for_tams.md` — OAuth concepts, flows, and troubleshooting guide for TAMs
-- `runbooks/auth_failing.md` — Auth incident runbook with diagnosis tree and customer messages
-- `docs/ai_playbooks/auth_triage_prompt.md` — AI prompt template for auth triage
-- Postman collection updated with OAuth 2.0 flows, error drills, and JWT assertions (53 assertions, 0 failures)
+# Run the Postman test suite
+just test
+```
 
-## Week 4 — OIDC + PKCE + Edge Cases (in progress)
+For service-specific setup and troubleshooting, see the README inside each service folder.
 
-- `/oauth/userinfo-token` endpoint — returns both `access_token` and `id_token`
-- `/oauth/authorize` endpoint — redirect URI validation with exact match
-- Postman collection updated with OIDC and redirect URI test cases
+## Repo structure
+
+```
+services/                    # runnable demo services
+  webhook_receiver/          # Flask receiver + SQLite queue + async worker
+postman/                     # Postman collections + environments
+docs/
+  foundations/               # core concepts: HTTP, OAuth, webhooks, errors
+  ai_playbooks/              # AI prompt templates for triage and customer comms
+  english_talk_tracks/       # phrase banks for customer conversations
+  auth_evidence_checklist.md
+  webhook_troubleshooting_guide.md
+runbooks/                    # incident response playbooks
+sql/                         # reconciliation datasets and queries
+justfile                     # task runner: dev, test, receiver, worker
+```
+
+## Progress by week
+
+### Week 1 — HTTP + Postman Foundations
+HTTP debugging notes, error patterns, missing records checklist, rate limit playbook. Postman collection with error drills.
+
+### Week 2 — Postman Pro + CLI + CI
+GitHub Actions pipeline running the full collection on every push. Conventional commits. 35 assertions.
+
+### Week 3 — OAuth 2.0 Troubleshooting
+OAuth concepts and flows for TAMs. Auth incident runbook with diagnosis tree and customer message templates. AI triage prompt. 53 assertions.
+
+### Week 4 — OIDC + PKCE + Edge Cases
+OIDC `id_token` + `access_token` flow merged into `/oauth/token`. `/oauth/authorize` with redirect URI validation and PKCE (S256). Auth evidence checklist. AI playbook for customer auth updates.
+
+### Week 5 — Webhooks: Receive + Verify + Process
+Stripe-style webhook receiver with HMAC signature verification, replay protection (timestamp tolerance), and persistent SQLite queue. Async worker with atomic claim pattern. Webhook troubleshooting guide, failure runbook, and AI triage playbook.
+
+## Conventions
+
+- **Commits**: [Conventional Commits](https://www.conventionalcommits.org/) — `feat(scope):`, `fix(scope):`, `docs:`, `refactor:`, `ci:`
+- **Python**: 3.11+
+- **Postman**: collections live in `postman/` and run in CI via Postman CLI
+- **Notes**: conceptual learning notes are kept in a separate Obsidian vault. This repo holds shipped artifacts (code, docs, runbooks).
