@@ -2341,6 +2341,491 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Stripe API",
+      "item": [
+        {
+          "name": "List Payment Intents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://api.stripe.com/v1/payment_intents?limit=3",
+              "protocol": "https",
+              "host": [
+                "api",
+                "stripe",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "payment_intents"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create PaymentIntent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "});",
+                  "",
+                  "pm.test(\"PaymentIntent created\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.id).to.match(/^pi_/);",
+                  "    pm.expect(json.status).to.eql(\"requires_payment_method\");",
+                  "});",
+                  "",
+                  "// Save for downstream requests",
+                  "const json = pm.response.json();",
+                  "pm.environment.set(\"payment_intent_id\", json.id);",
+                  "console.log(\"Saved payment_intent_id:\", json.id);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "amount",
+                  "value": "5000",
+                  "type": "text",
+                  "uuid": "c47a4eb5-b6a3-41b7-9688-aa239942c8b2"
+                },
+                {
+                  "key": "currency",
+                  "value": "usd",
+                  "type": "text",
+                  "uuid": "bc2eca51-7233-4c54-8c37-df4c22146926"
+                },
+                {
+                  "key": "payment_method_types[]",
+                  "value": "card",
+                  "type": "text",
+                  "uuid": "42d0c4bd-7417-41f8-9154-675aeca21e4f"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://api.stripe.com/v1/payment_intents",
+              "protocol": "https",
+              "host": [
+                "api",
+                "stripe",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "payment_intents"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm PaymentIntent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.latest_charge) {",
+                  "    pm.environment.set(\"charge_id\", json.latest_charge);",
+                  "    console.log(\"Saved charge_id:\", json.latest_charge);",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "payment_method",
+                  "value": "pm_card_visa",
+                  "type": "text",
+                  "uuid": "27e1d59b-e2e0-4c47-a2f5-c3d6b916b0f5"
+                },
+                {
+                  "key": "return_url",
+                  "value": "https://example.com/return",
+                  "type": "text",
+                  "uuid": "7c4d09a5-3034-446e-ac81-281b2957e0ab"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://api.stripe.com/v1/payment_intents/{{payment_intent_id}}/confirm",
+              "protocol": "https",
+              "host": [
+                "api",
+                "stripe",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "payment_intents",
+                "{{payment_intent_id}}",
+                "confirm"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Charge",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.balance_transaction) {",
+                  "    pm.environment.set(\"balance_transaction_id\", json.balance_transaction);",
+                  "    console.log(\"Saved balance_transaction_id:\", json.balance_transaction);",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://api.stripe.com/v1/charges/{{charge_id}}",
+              "protocol": "https",
+              "host": [
+                "api",
+                "stripe",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "charges",
+                "{{charge_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get BalanceTransaction",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://api.stripe.com/v1/balance_transactions/{{balance_transaction_id}}",
+              "protocol": "https",
+              "host": [
+                "api",
+                "stripe",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "balance_transactions",
+                "{{balance_transaction_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Refund",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Refund created\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.id).to.match(/^re_/);",
+                  "    pm.expect(json.status).to.eql(\"succeeded\");",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.environment.set(\"refund_id\", json.id);",
+                  "pm.environment.set(\"refund_balance_transaction_id\", json.balance_transaction);",
+                  "console.log(\"Saved refund_id:\", json.id);",
+                  "console.log(\"Saved refund BT:\", json.balance_transaction);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "charge",
+                  "value": "{{charge_id}}",
+                  "type": "text",
+                  "uuid": "ebf7875e-8418-4339-b92c-ac7ca8b92dc6"
+                },
+                {
+                  "key": "reason",
+                  "value": "requested_by_customer",
+                  "type": "text",
+                  "uuid": "5d3ee7e9-30be-4960-9f71-1bf879af07b6"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://api.stripe.com/v1/refunds",
+              "protocol": "https",
+              "host": [
+                "api",
+                "stripe",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "refunds"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Refund Balance Transaction",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "});",
+                  "",
+                  "pm.test(\"BT type is refund\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.type).to.eql(\"refund\");",
+                  "});",
+                  "",
+                  "pm.test(\"Amount is negative (money out)\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.amount).to.be.below(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No fee on refund (original fee is not recovered)\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.fee).to.eql(0);",
+                  "    pm.expect(json.fee_details).to.be.an(\"array\").that.is.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Net equals amount (no fee adjustment)\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.net).to.eql(json.amount);",
+                  "});",
+                  "",
+                  "pm.test(\"Source points to refund object\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.source).to.match(/^re_/);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://api.stripe.com/v1/balance_transactions/{{refund_balance_transaction_id}}",
+              "protocol": "https",
+              "host": [
+                "api",
+                "stripe",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "balance_transactions",
+                "{{refund_balance_transaction_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Payouts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is a list object\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.object).to.eql(\"list\");",
+                  "    pm.expect(json.data).to.be.an(\"array\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://api.stripe.com/v1/payouts?limit=10",
+              "protocol": "https",
+              "host": [
+                "api",
+                "stripe",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "payouts"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Balance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Has pending and available arrays\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.pending).to.be.an(\"array\");",
+                  "    pm.expect(json.available).to.be.an(\"array\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://api.stripe.com/v1/balance",
+              "protocol": "https",
+              "host": [
+                "api",
+                "stripe",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "balance"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "auth": {
+        "type": "basic",
+        "basic": [
+          {
+            "key": "username",
+            "value": "{{stripe_secret_key}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ]
     }
   ],
   "event": [

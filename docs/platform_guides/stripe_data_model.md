@@ -325,12 +325,35 @@ PaymentIntent is the umbrella for the customer's intent to pay. It can have mult
 
 ### "Why is my payout less than expected?"
 
-Three possible reasons:
-1. Refunds during the payout window reduced the net
-2. Disputes deducted from your balance
-3. Stripe held a reserve or made an adjustment
+The structured approach (do these in order):
 
-To investigate: GET the Payout, then GET its BalanceTransactions, then sum the net column.
+**Step 1 — Identify the specific payout**
+Get the `po_xxx` from the customer. Without it you don't know which window to investigate. If they only have the bank deposit info, find it via `GET /v1/payouts?arrival_date=...`.
+
+**Step 2 — List the BalanceTransactions for that payout**
+```
+GET /v1/balance_transactions?payout=po_xxx
+```
+This is the source of truth. Don't start from charges or payment intents — start from the payout's BTs.
+
+**Step 3 — Sum the `net` column**
+The sum should equal the payout's `amount`. If it doesn't, something is wrong (extremely rare — usually means you missed a BT in pagination).
+
+**Step 4 — Identify the unexpected deductions**
+Filter the BTs for negative or surprising entries:
+- Refunds (`type: refund`) — money the customer doesn't always remember they refunded
+- Disputes (`type: adjustment` with reason indicating dispute) — chargebacks
+- Chargeback fees (typically $15 each, NOT refunded even if dispute is won)
+- Connect fees (if using a platform)
+- Stripe processing fees (the cumulative 2.9% + 30c on every charge)
+
+**Step 5 — Communicate with concrete numbers**
+> "Your payout was $X. You expected $Y. The $Z difference breaks down as:
+> - $A in refunds (3 specific transactions: ch_001, ch_002, ch_003)
+> - $B in chargeback fees (1 dispute: dp_001)
+> - $C in Stripe processing fees for the period"
+
+==The wrong approach is to start by listing payments and summing them.== That works backwards from the customer's perspective but doesn't tell you what actually composed the payout. Always start from the payout, follow its BTs, and let the BTs lead you to the source objects.
 
 ### "Why does Stripe show different amounts than my bank?"
 
