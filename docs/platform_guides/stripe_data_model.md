@@ -317,6 +317,147 @@ For a $100 charge that gets disputed and lost:
 
 This last case is critical: a chargeback costs you **more** than the original transaction was worth.
 
+## Webhook events — what fires when
+
+Every state change in Stripe fires a webhook event. As a TAM, knowing which event corresponds to which lifecycle moment is critical for troubleshooting customer integrations.
+
+### Format conventions
+
+- Event names use **snake_case**, never camelCase: `payment_intent.succeeded`, NOT `paymentIntent.succeeded`
+- Format is `resource.action`: the resource is the object type, the action describes what happened
+- BalanceTransactions do NOT have their own events — they are inferred from Charges, Refunds, Payouts
+
+### Events fired during a subscription creation flow
+
+When you create a Subscription via API, this is the chain of events that fire to your webhook endpoint, in order:
+
+1. `customer.created`
+2. `payment_method.attached`
+3. `customer.subscription.created`
+4. `invoice.created`
+5. `invoice.finalized`
+6. `payment_intent.created`
+7. `charge.succeeded`
+8. `payment_intent.succeeded`
+9. `invoice.paid`
+10. `invoice.payment_succeeded`
+11. `customer.subscription.updated`
+
+==Notice that `.created` events fire BEFORE the actual operation succeeds.== Customers who base critical logic on `payment_intent.created` will trigger workflows for charges that may eventually fail. Always wait for `*.succeeded`, `*.paid`, or `*.failed` events.
+
+### Events every TAM must know cold
+
+| Event | Fires when | Customer should use it for |
+|---|---|---|
+| `payment_intent.succeeded` | Charge captured successfully | Recognize revenue, send receipt, fulfill order |
+| `payment_intent.payment_failed` | Charge failed | Retry workflow, notify customer |
+| `charge.refunded` | Refund processed | Reverse revenue, update accounting |
+| `charge.dispute.created` | Customer opened a chargeback | Start evidence gathering, alert ops team |
+| `charge.dispute.closed` | Dispute resolved (won or lost) | Adjust accounting based on outcome |
+| `invoice.paid` | Subscription invoice paid | Renew service access, extend membership |
+| `invoice.payment_failed` | Subscription cobro failed | Trigger dunning workflow, retry |
+| `invoice.payment_action_required` | 3DS or extra auth needed | Email customer to complete payment |
+| `customer.subscription.created` | New subscription started | Provision service, welcome email |
+| `customer.subscription.updated` | Plan changed, status changed, cancel scheduled | Sync subscription state |
+| `customer.subscription.deleted` | Subscription canceled (immediately or at period end) | Cut access, send cancellation email |
+| `customer.subscription.trial_will_end` | 3 days before trial ends | Convert customer to paid plan |
+| `payout.paid` | Stripe deposited money in bank | Register cash in books |
+| `payout.failed` | Bank rejected the deposit | Investigate banking info |
+
+### The TAM rule for webhooks
+
+> [!warning] What customers get wrong about webhook events
+> ==NEVER base critical business logic on `*.created` events.== Always use:
+> - `*.succeeded` — confirms the operation completed
+> - `*.paid` — confirms money moved
+> - `*.failed` — confirms operation will not succeed
+>
+> A customer once called complaining that they were giving access to their service based on `payment_intent.created`. They had hundreds of users with access who never paid (their charges failed). The fix: switch the webhook handler to listen for `payment_intent.succeeded` instead.
+
+### Mapping events back to the data model
+
+When you receive a webhook, the payload includes the full object that triggered it. Example for `payment_intent.succeeded`:
+
+```json
+{
+  "id": "evt_abc123",
+  "type": "payment_intent.succeeded",
+  "data": {
+    "object": {
+      "id": "pi_xxx",
+      "amount": 5000,
+      "latest_charge": "ch_xxx",
+      "status": "succeeded"
+    }
+  }
+}
+```
+
+You can navigate from there:
+- `data.object.id` → the PaymentIntent
+- `data.object.latest_charge` → the Charge
+- `GET /v1/charges/ch_xxx` to find the BalanceTransaction
+- `GET /v1/balance_transactions/txn_xxx` to see net, fee, available_on
+
+This is how you trace any payment from a webhook event back to its accounting impact.
+
+### Filtering events at the endpoint level
+
+In Stripe Dashboard, when you create a webhook endpoint you can filter which events to receive. Common patterns:
+
+- **Reconciliation-only system**: subscribe to `payment_intent.succeeded`, `charge.refunded`, `payout.paid`
+- **Subscription management**: subscribe to `customer.subscription.*` and `invoice.*`
+- **Fraud monitoring**: subscribe to `charge.dispute.*`, `radar.early_fraud_warning.created`
+
+==Do not subscribe to all events ('*'). You will get hundreds per day during high traffic and most are noise.== Filter at the source.
+
+
+### Connecting back to the Week 5 webhook receiver
+
+Your `services/webhook_receiver/app.py` already handles all of these events generically — it verifies the signature, deduplicates by event ID, and queues for processing. The receiver does not care whether the event is `payment_intent.succeeded` or `customer.subscription.deleted`; it treats them all as raw events.
+
+The **business logic** of how to react to each event type lives in the worker, which is where you would add a routing layer:
+
+```python
+# In worker.py, expanding process_event():
+def process_event(event):
+    payload = json.loads(event["raw_body"])
+    event_type = payload.get("type")
+    
+    if event_type == "payment_intent.succeeded":
+        handle_payment_succeeded(payload)
+    elif event_type == "charge.refunded":
+        handle_refund(payload)
+    elif event_type.startswith("customer.subscription."):
+        handle_subscription_event(payload)
+    # etc.
+```
+
+This is how production systems organize webhook handling: ingestion is generic, processing is type-specific.
+
+### Real example: events fired in this repo's test session
+
+When testing this repo's flow (Customer + PaymentMethod + Product + Price + Subscription), Stripe fired roughly this sequence to the webhook endpoint:
+
+```
+customer.created
+payment_method.attached
+product.created
+price.created
+customer.subscription.created
+invoice.created
+invoice.finalized
+invoice.updated   (fires multiple times during finalization)
+payment_intent.created
+charge.succeeded
+payment_intent.succeeded
+invoice.paid
+invoice.payment_succeeded
+customer.subscription.updated
+```
+
+==Notice that 14+ events fire from a single "create subscription" API call.== A naive subscriber that processes all of them will do far more work than necessary. Subscribe only to the events your business logic needs.
+
 ## Common TAM questions
 
 ### "What's the difference between a Charge and a PaymentIntent?"
