@@ -19,6 +19,8 @@ OAUTH_CLIENT_ID = os.environ.get("OAUTH_CLIENT_ID", "test-client")
 OAUTH_CLIENT_SECRET = os.environ.get("OAUTH_CLIENT_SECRET", "test-secret")
 REGISTERED_REDIRECT_URI = "https://app.example.com/callback"
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "whsec_test_secret")
+BEARER_TOKEN_ADMIN = os.environ.get("BEARER_TOKEN_ADMIN", "token_admin")
+BEARER_TOKEN_USER = os.environ.get("BEARER_TOKEN_USER", "token_user")
 
 
 # ---------------------------------------------------------------------------
@@ -68,7 +70,7 @@ def require_scope(required_scope):
             if not auth.startswith("Bearer "):
                 return jsonify({"ok": False, "error": "missing_bearer_token"}), 401
             token = auth.removeprefix("Bearer ").strip()
-            if token == "token_admin":
+            if token == BEARER_TOKEN_ADMIN:
                 return f(*args, **kwargs)
 
             # Validate JWT first (checks exp automatically)
