@@ -9,7 +9,16 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-
+    env:
+      BASE_URL: http://127.0.0.1:5001
+      BEARER_TOKEN_ADMIN: token_admin
+      BEARER_TOKEN_USER: token_user
+      JWT_SECRET: dev-secret-key
+      OAUTH_CLIENT_ID: test-client
+      OAUTH_CLIENT_SECRET: test-secret
+      WEBHOOK_SECRET: whsec_test_secret
+      DB_PATH: webhook_events.db
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -22,9 +31,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r services/webhook_receiver/requirements.txt
 
-      - name: Start Flask server
+      - name: Start Flask server and worker
         run: |
           python services/webhook_receiver/app.py &
+          python services/webhook_receiver/worker.py &
           sleep 2
 
       - name: Install Postman CLI
@@ -34,4 +44,8 @@ jobs:
       - name: Run Postman collection
         run: |
           postman collection run "postman/Fintech Integration Starter Kit.postman_collection.json" \
-            --environment postman/local.postman_environment.json
+            --environment postman/local.postman_environment.json \
+            --env-var "base_url=$BASE_URL" \
+            --env-var "bearer_token_admin=$BEARER_TOKEN_ADMIN" \
+            --env-var "bearer_token_user=$BEARER_TOKEN_USER" \
+            --env-var "stripe_secret_key=$STRIPE_SECRET_KEY"
